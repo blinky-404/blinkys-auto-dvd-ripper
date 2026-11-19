@@ -19,7 +19,7 @@ A turnkey, hot-swappable DVD ripping and encoding pipeline for **CasaOS**, **Deb
 Plug in your USB DVD drive(s) and run:
 
 ```bash
-curl -fsSL https://githubusercontent.com | bash
+curl -fsSL https://raw.githubusercontent.com/blinky-404/casaos-auto-dvd-ripper/main/install.sh | bash
 ```
 
 ## Web Interfaces & Directories
