@@ -34,12 +34,6 @@ Designed, debugged, and packaged with AI assistance.
 
 ## Upstream Projects & Credits
 This automation wrapper relies on the excellent work of the following upstream developers and projects:
-* **[jlesage/docker-makemkv](https://github.com/jlesage/docker-makemkv)** & **[jlesage/docker-handbrake](https://github.com/jlesage/docker-handbrake)** by **Jocelyn Le Sage ()** — for maintaining the containerized web-UI builds, auto-ripper daemon, and conversion hook framework that power this pipeline.
-* **[MakeMKV](https://makemkv.com)** — for disc decryption and MKV extraction.
-* **[HandBrake](https://handbrake.fr)** — for open-source video transcoding.
-
-## Upstream Projects & Credits
-This automation wrapper relies on the excellent work of the following upstream developers and projects:
 * **jlesage/docker-makemkv** & **jlesage/docker-handbrake** by **Jocelyn Le Sage (`jlesage`)** — for maintaining the containerized web-UI builds, auto-ripper daemon, and conversion hook framework that power this pipeline.
 * **MakeMKV** (`makemkv.com`) — for disc decryption and MKV extraction.
 * **HandBrake** (`handbrake.fr`) — for open-source video transcoding.
