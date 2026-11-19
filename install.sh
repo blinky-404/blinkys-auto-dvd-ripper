@@ -1,6 +1,7 @@
 #!/bin/bash
 # CasaOS Automated Dual-Drive DVD Ripper
 # Upstream Containers: Built on jlesage/docker-makemkv and jlesage/docker-handbrake by Jocelyn Le Sage (https://github.com/jlesage).
+# Upstream Containers: Built on jlesage/docker-makemkv and jlesage/docker-handbrake by Jocelyn Le Sage (https://github.com/jlesage).
 # Attribution: Architecture, Docker Compose setup, HandBrake hooks, and udev/systemd rules were created with AI assistance.
 set -e
 
