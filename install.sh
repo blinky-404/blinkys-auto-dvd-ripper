@@ -1,22 +1,25 @@
 #!/bin/bash
 # CasaOS Automated Dual-Drive DVD Ripper
-# Upstream Containers: Built on jlesage/docker-makemkv and jlesage/docker-handbrake by Jocelyn Le Sage (https://github.com/jlesage).
 # Attribution: Architecture, Docker Compose setup, HandBrake hooks, and udev/systemd rules were created with AI assistance.
+# Upstream Containers: Built on jlesage/docker-makemkv and jlesage/docker-handbrake by Jocelyn Le Sage (https://github.com).
 set -e
 
+RIPPER_DIR="${RIPPER_DIR:-/DATA/ripper}"
+echo "=== Installing DVD Ripper into: $RIPPER_DIR ==="
+
 echo "=== 1. Creating Ripper Directories ==="
-sudo mkdir -p /DATA/ripper/{raw,finished,no_audio,makemkv/config,handbrake/config/hooks}
-sudo chown -R 1000:1000 /DATA/ripper
+sudo mkdir -p "$RIPPER_DIR"/{raw,finished,no_audio,makemkv/config,handbrake/config/hooks}
+sudo chown -R 1000:1000 "$RIPPER_DIR"
 
 echo "=== 2. Pre-configuring MakeMKV Unlabelled-Audio Rule ==="
-sudo tee /DATA/ripper/makemkv/config/settings.conf > /dev/null << 'EOF'
+sudo tee "$RIPPER_DIR/makemkv/config/settings.conf" > /dev/null << 'EOF'
 app_DefaultSelectionString = "-sel:all,+sel:(favlang|nolang|single),-sel:mvcvideo,=100:all,-10:favlang"
 app_ExpertMode = "true"
 EOF
-sudo chown 1000:1000 /DATA/ripper/makemkv/config/settings.conf
+sudo chown 1000:1000 "$RIPPER_DIR/makemkv/config/settings.conf"
 
 echo "=== 3. Installing HandBrake Audio Check & Auto-Naming Hooks ==="
-sudo tee /DATA/ripper/handbrake/config/hooks/pre_conversion.sh > /dev/null << 'EOF'
+sudo tee "$RIPPER_DIR/handbrake/config/hooks/pre_conversion.sh" > /dev/null << 'EOF'
 #!/bin/sh
 SOURCE_FILE="$1"
 if [ -f "$SOURCE_FILE" ]; then
@@ -30,9 +33,9 @@ if [ -f "$SOURCE_FILE" ]; then
     fi
 fi
 EOF
-sudo chmod +x /DATA/ripper/handbrake/config/hooks/pre_conversion.sh
+sudo chmod +x "$RIPPER_DIR/handbrake/config/hooks/pre_conversion.sh"
 
-sudo tee /DATA/ripper/handbrake/config/hooks/post_conversion.sh > /dev/null << 'EOF'
+sudo tee "$RIPPER_DIR/handbrake/config/hooks/post_conversion.sh" > /dev/null << 'EOF'
 #!/bin/sh
 STATUS="$1"
 OUTPUT_FILE="$2"
@@ -48,10 +51,10 @@ if [ "$STATUS" -eq 0 ] && [ -f "$OUTPUT_FILE" ]; then
     fi
 fi
 EOF
-sudo chmod +x /DATA/ripper/handbrake/config/hooks/post_conversion.sh
+sudo chmod +x "$RIPPER_DIR/handbrake/config/hooks/post_conversion.sh"
 
 echo "=== 4. Writing Docker Compose Configuration ==="
-cat << 'EOF' > /tmp/dc.yml
+cat << EOF > /tmp/dc.yml
 services:
   makemkv:
     image: jlesage/makemkv
@@ -68,12 +71,12 @@ services:
       - AUTO_DISC_RIPPER_FORCE_UNIQUE_OUTPUT_DIR=1
       - AUTO_DISC_RIPPER_MAKEMKV_PROFILE=default
     volumes:
-      - "/DATA/ripper/makemkv/config:/config:rw"
-      - "/DATA/ripper/raw:/output:rw"
+      - "$RIPPER_DIR/makemkv/config:/config:rw"
+      - "$RIPPER_DIR/raw:/output:rw"
     devices:
 EOF
 for d in /dev/sr* /dev/sg*; do [ -e "$d" ] && echo "      - \"$d:$d\"" >> /tmp/dc.yml; done
-cat << 'EOF' >> /tmp/dc.yml
+cat << EOF >> /tmp/dc.yml
     restart: unless-stopped
 
   handbrake:
@@ -90,22 +93,22 @@ cat << 'EOF' >> /tmp/dc.yml
       - AUTOMATED_CONVERSION_KEEP_SOURCE=0
       - AUTOMATED_CONVERSION_WATCH_DIR_FILTER=*.mkv
     volumes:
-      - "/DATA/ripper/handbrake/config:/config:rw"
-      - "/DATA/ripper/raw:/watch:rw"
-      - "/DATA/ripper/finished:/output:rw"
-      - "/DATA/ripper/no_audio:/no_audio:rw"
+      - "$RIPPER_DIR/handbrake/config:/config:rw"
+      - "$RIPPER_DIR/raw:/watch:rw"
+      - "$RIPPER_DIR/finished:/output:rw"
+      - "$RIPPER_DIR/no_audio:/no_audio:rw"
     restart: unless-stopped
 EOF
-sudo mv /tmp/dc.yml /DATA/ripper/docker-compose.yml
+sudo mv /tmp/dc.yml "$RIPPER_DIR/docker-compose.yml"
 
 echo "=== 5. Installing Plug-and-Play Drive Sync Service & Hot-Swap Rule ==="
-sudo tee /usr/local/bin/sync-ripper-drives.sh > /dev/null << 'EOF'
+sudo tee /usr/local/bin/sync-ripper-drives.sh > /dev/null << EOF
 #!/bin/bash
 sleep 5
-DEVS=$(for d in /dev/sr* /dev/sg*; do [ -e "$d" ] && echo "      - \"$d:$d\""; done)
-if [ -n "$DEVS" ]; then
-  awk -v devs="$DEVS" '/devices:/{print; print devs; skip=1; next} skip && /restart:/{skip=0; print; next} !skip{print}' /DATA/ripper/docker-compose.yml > /tmp/dc.yml && mv /tmp/dc.yml /DATA/ripper/docker-compose.yml
-  cd /DATA/ripper && docker compose up -d
+DEVS=\$(for d in /dev/sr* /dev/sg*; do [ -e "\$d" ] && echo "      - \"\$d:\$d\""; done)
+if [ -n "\$DEVS" ]; then
+  awk -v devs="\$DEVS" '/devices:/{print; print devs; skip=1; next} skip && /restart:/{skip=0; print; next} !skip{print}' "$RIPPER_DIR/docker-compose.yml" > /tmp/dc.yml && mv /tmp/dc.yml "$RIPPER_DIR/docker-compose.yml"
+  cd "$RIPPER_DIR" && docker compose up -d
 fi
 EOF
 sudo chmod +x /usr/local/bin/sync-ripper-drives.sh
@@ -133,5 +136,5 @@ sudo systemctl enable sync-ripper-drives.service
 sudo udevadm control --reload-rules
 
 echo "=== 6. Starting MakeMKV & HandBrake ==="
-cd /DATA/ripper && sudo docker compose up -d
+cd "$RIPPER_DIR" && sudo docker compose up -d
 echo "=== Done! MakeMKV is at :5800 and HandBrake is at :5801 ==="
