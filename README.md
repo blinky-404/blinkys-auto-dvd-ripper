@@ -72,3 +72,17 @@ sudo docker run -d --name rip-organizer-btn --restart no \
   alpine sh -c "apk add --no-cache bash curl jq ffmpeg python3 && bash /organize-rips.sh"
 ```
 Click **three dots (`...`) > Start** (or **Restart**) on `rip-organizer-btn` anytime to run the organizer immediately.
+
+### Setting Up Your Free TMDB API Token & Organizer
+1. Create a free account at [themoviedb.org](https://themoviedb.org) and go to **Settings > API** to generate an **API Read Access Token** (starts with `eyJ...`) or **API Key**.
+2. Copy the example config file into your ripper directory and install the organizer script:
+   ```bash
+   sudo cp organizer.conf.example /DATA/ripper/organizer.conf
+   sudo cp scripts/organize-rips.sh /usr/local/bin/organize-rips.sh
+   sudo chmod +x /usr/local/bin/organize-rips.sh
+   ```
+3. Open `/DATA/ripper/organizer.conf` and paste your TMDB token inside `TMDB_TOKEN="..."`.
+4. *(Optional)* Schedule the organizer to run automatically every night at 3:00 AM via `sudo crontab -e`:
+   ```cron
+   0 3 * * * /usr/local/bin/organize-rips.sh
+   ```
