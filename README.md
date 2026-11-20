@@ -86,3 +86,25 @@ Click **three dots (`...`) > Start** (or **Restart**) on `rip-organizer-btn` any
    ```cron
    0 3 * * * /usr/local/bin/organize-rips.sh
    ```
+
+## Beginner's Quick Reference & Troubleshooting
+
+New to Linux or CasaOS? You do not need to memorize commands—use this quick guide to see where your files go and how to check if everything is healthy.
+
+### Where Do My Movies Go? (Folder Map)
+Every folder lives inside **`DATA > ripper`** in your CasaOS **Files** app:
+- **`raw/`** — Temporary landing zone while MakeMKV reads your DVD.
+- **`watch/`** — Holding area where movies wait in line for HandBrake to compress them.
+- **`finished/`** — Completed `.mp4` movies ready to be renamed and sorted.
+- **`organized_movies/`** — Your final, cleanly named `Movie Title (Year)` folders and Notepad `_info.txt` reports.
+- **`no_audio/`** — Quarantined bonus clips, silent tracks, or incomplete rips under 45 minutes.
+
+### One-Command Health Check
+If a disc isn't ripping or you want to verify your setup, open the **CasaOS Terminal** (`>_` icon in the top-left of CasaOS) and paste this single line:
+```bash
+echo "=== Containers ===" && sudo docker ps --format "table {{.Names}}\t{{.Status}}" && echo "=== DVD Drives ===" && ls -l /dev/sr* 2>/dev/null || echo "No DVD drives detected" && echo "=== Recent Rip Report ===" && cat /DATA/ripper/organized_movies/ripper_daily_report.txt 2>/dev/null || echo "No report generated yet"
+```
+
+### Need Help? Copy-Paste This Into Any AI Assistant
+If something gets stuck, run the **Health Check** command above, copy the output, and paste it into an AI assistant with this prompt:
+> *"I am using the `blinky-404/casaos-auto-dvd-ripper` setup on CasaOS. Here is my health check output—can you tell me what is wrong and give me the exact command to fix it?"*
