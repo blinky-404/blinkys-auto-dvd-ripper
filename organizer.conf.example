@@ -1,0 +1,4 @@
+# Copy to /DATA/ripper/organizer.conf and paste your TMDB Read Access Token:
+TMDB_TOKEN="PASTE_YOUR_TMDB_TOKEN_HERE"
+DEST_MOVIES_DIR="/DATA/ripper/organized_movies"
+MIN_RUNTIME_MINS=45

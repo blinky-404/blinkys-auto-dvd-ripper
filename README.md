@@ -52,3 +52,23 @@ This automation wrapper relies on the excellent work of the following upstream d
 
 ## Attribution
 Designed, debugged, and packaged with AI assistance.
+
+## Automated Daily TMDB Organizer & Quality Auditor (`organize-rips.sh`)
+
+After HandBrake finishes encoding `.mp4` files into `/DATA/ripper/finished`, `scripts/organize-rips.sh` automatically verifies, renames, and organizes them into standard `Movie Title (Year)` folders—either on a **3:00 AM daily cron schedule** or on-demand via a **one-click CasaOS dashboard button** (`rip-organizer-btn`).
+
+### Features
+- **Simple Config File (`/DATA/ripper/organizer.conf`):** Store your free TMDB Read Access Token, destination root path, and minimum runtime threshold once (template provided in `organizer.conf.example`).
+- **Audio & Runtime Gatekeeper:** Uses `ffprobe` to quarantine silent tracks or clips shorter than `MIN_RUNTIME_MINS` (default: `45` minutes) into `/DATA/ripper/no_audio`.
+- **DVD-Calibrated Quality Tiering:** Routes clean rips (`300p+` height and `400+ kbps` bitrate) into `movies full quality/` and flags ultra-low-resolution or heavily pixelated rips into `movies low quality/`.
+- **TMDB Matching & Notepad Reports:** Renames matched titles to `Movie Title (Year)/Movie Title (Year).mp4`, writes an individual `Movie Title (Year)_info.txt` file inside each movie folder, and refreshes a master `ripper_daily_report.txt` summary on every run.
+
+### One-Click CasaOS Dashboard Trigger
+Create a lightweight on-demand button tile on your CasaOS home screen:
+```bash
+sudo docker run -d --name rip-organizer-btn --restart no \
+  -v /DATA/ripper:/DATA/ripper \
+  -v /usr/local/bin/organize-rips.sh:/organize-rips.sh:ro \
+  alpine sh -c "apk add --no-cache bash curl jq ffmpeg python3 && bash /organize-rips.sh"
+```
+Click **three dots (`...`) > Start** (or **Restart**) on `rip-organizer-btn` anytime to run the organizer immediately.
