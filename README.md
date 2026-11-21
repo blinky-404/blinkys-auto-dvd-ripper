@@ -113,5 +113,5 @@ If something gets stuck, run the **Health Check** command above, copy the output
 - **Raw Audio Notepad Log (`/DATA/ripper/no_audio/raw_audio_audit.txt`):** Before HandBrake encodes any `.mkv`, `scripts/pre_conversion.sh` records all detected audio tracks (`index`, `codec`, `channels`, `language`) and automatically converts DTS/PCM streams to AAC so HandBrake never outputs a silent `.mp4`.
 - **One-Click Restart Button (`ripper-restart-btn`):** If a scratched disc ever causes MakeMKV or HandBrake to hang at 100%, create an on-demand restart tile on your CasaOS dashboard:
   ```bash
-  sudo docker run -d --name ripper-restart-btn --restart no -v /var/run/docker.sock:/var/run/docker.sock alpine sh -c "apk add --no-cache docker-cli && docker restart makemkv handbrake"
+  sudo docker run -d --name ripper-restart-btn --restart no -v /var/run/docker.sock:/var/run/docker.sock -v /DATA/ripper:/DATA/ripper alpine sh -c "apk add --no-cache docker-cli && rm -f /DATA/ripper/handbrake/config/failed_conversions && docker restart makemkv handbrake"
   ```
