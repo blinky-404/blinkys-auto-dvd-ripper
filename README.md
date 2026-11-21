@@ -108,3 +108,10 @@ echo "=== Containers ===" && sudo docker ps --format "table {{.Names}}\t{{.Statu
 ### Need Help? Copy-Paste This Into Any AI Assistant
 If something gets stuck, run the **Health Check** command above, copy the output, and paste it into an AI assistant with this prompt:
 > *"I am using the `blinky-404/casaos-auto-dvd-ripper` setup on CasaOS. Here is my health check output—can you tell me what is wrong and give me the exact command to fix it?"*
+
+### Raw Audio Audit Log & One-Click Ripper Restart
+- **Raw Audio Notepad Log (`/DATA/ripper/no_audio/raw_audio_audit.txt`):** Before HandBrake encodes any `.mkv`, `scripts/pre_conversion.sh` records all detected audio tracks (`index`, `codec`, `channels`, `language`) and automatically converts DTS/PCM streams to AAC so HandBrake never outputs a silent `.mp4`.
+- **One-Click Restart Button (`ripper-restart-btn`):** If a scratched disc ever causes MakeMKV or HandBrake to hang at 100%, create an on-demand restart tile on your CasaOS dashboard:
+  ```bash
+  sudo docker run -d --name ripper-restart-btn --restart no -v /var/run/docker.sock:/var/run/docker.sock alpine sh -c "apk add --no-cache docker-cli && docker restart makemkv handbrake"
+  ```
