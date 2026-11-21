@@ -97,6 +97,7 @@ Every folder lives inside **`DATA > ripper`** in your CasaOS **Files** app:
 - **`watch/`** — Holding area where movies wait in line for HandBrake to compress them.
 - **`finished/`** — Completed `.mp4` movies ready to be renamed and sorted.
 - **`organized_movies/`** — Your final, cleanly named `Movie Title (Year)` folders and Notepad `_info.txt` reports.
+- **`raw_audio_backups/`** — Untouched original MakeMKV `.mkv` files saved automatically before DTS/PCM audio conversion.
 - **`no_audio/`** — Quarantined bonus clips, silent tracks, or incomplete rips under 45 minutes.
 
 ### One-Command Health Check
