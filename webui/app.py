@@ -166,7 +166,7 @@ async def install_local_ai(request: Request):
 
 def collect_logs():
     mk_raw = docker_sock("GET", "/containers/makemkv/logs?stdout=1&stderr=1&tail=250")
-    mk_filt = "\n".join([l for l in mk_raw.splitlines() if re.search(r"(error|fail|sector|hash|title|cell|skip|eject|complete|rip)", l, re.I)])
+    mk_filt = "\n".join([l for l in mk_raw.splitlines() if re.search(r"(error|fail|sector|hash|title|cell|skip|eject|complete|rip|autodiscripper|disc|backing)", l, re.I)])
     hb_raw = docker_sock("GET", "/containers/handbrake/logs?stdout=1&stderr=1&tail=150")
     hb_filt = "\n".join([l for l in hb_raw.splitlines() if re.search(r"(error|fail|encoding|complete|scan|title)", l, re.I)])
     aud = open(os.path.join(LOG_DIR, "audio_audit.log")).read() if os.path.exists(os.path.join(LOG_DIR, "audio_audit.log")) else ""
