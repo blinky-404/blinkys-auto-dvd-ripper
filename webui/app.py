@@ -93,6 +93,17 @@ def index(request: Request):
         "filebrowser": os.environ.get("FILEBROWSER_PORT", "8091")
     }})
 
+import shutil
+def sys_metrics():
+    du = shutil.disk_usage(MEDIA_DIR)
+    free_gb = round(du.free / (1024**3), 1)
+    total_gb = round(du.total / (1024**3), 1)
+    disk_pct = round(((du.total - du.free) / du.total) * 100, 1)
+    load1 = os.getloadavg()
+    cores = os.cpu_count() or 1
+    cpu_pct = min(100.0, round((load1 / cores) * 100, 1))
+    return {"cpu_pct": cpu_pct, "disk_pct": disk_pct, "free_gb": free_gb, "total_gb": total_gb}
+
 @app.get("/api/status")
 def api_status():
     hw = detect_hardware()
@@ -105,7 +116,7 @@ def api_status():
     for c in ["makemkv", "handbrake", "ripper-filebrowser", "ripper-ai-vision"]:
         res = subprocess.run(["docker", "inspect", "-f", "{{.State.Status}}", c], capture_output=True, text=True)
         containers[c] = res.stdout.strip() if res.returncode == 0 else "not_installed"
-    return {"hardware": hw, "counts": counts, "hb_progress": hb_progress, "containers": containers}
+    return {"hardware": hw, "counts": counts, "hb_progress": hb_progress, "sys": sys_metrics(), "containers": containers}
 
 @app.post("/api/restart/{name}")
 def restart_container(name: str):
