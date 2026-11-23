@@ -34,3 +34,41 @@ services:
     volumes:
       - ${MEDIA_DIR:-/DATA/ripper_media}:/srv
       - ${SYSTEM_DIR:-/DATA/ripper_system}/filebrowser:/database
+
+  makemkv:
+    image: jlesage/makemkv:latest
+    container_name: makemkv
+    restart: unless-stopped
+    privileged: true
+    ports:
+      - "${MAKEMKV_PORT:-5800}:5800"
+    environment:
+      - USER_ID=${PUID:-1000}
+      - GROUP_ID=${PGID:-1000}
+      - TZ=${TZ:-America/Los_Angeles}
+      - AUTO_DISC_RIPPER=1
+      - AUTO_DISC_RIPPER_EJECT=1
+      - AUTO_DISC_RIPPER_MIN_TITLE_LENGTH=120
+    volumes:
+      - ${SYSTEM_DIR:-/DATA/ripper_system}/makemkv:/config
+      - ${MEDIA_DIR:-/DATA/ripper_media}/raw:/output
+      - ${MEDIA_DIR:-/DATA/ripper_media}:/storage
+
+  handbrake:
+    image: jlesage/handbrake:latest
+    container_name: handbrake
+    restart: unless-stopped
+    ports:
+      - "${HANDBRAKE_PORT:-5801}:5800"
+    environment:
+      - USER_ID=${PUID:-1000}
+      - GROUP_ID=${PGID:-1000}
+      - TZ=${TZ:-America/Los_Angeles}
+      - AUTOMATED_CONVERSION_PRESET=General/HQ 1080p30 Surround
+      - AUTOMATED_CONVERSION_FORMAT=mp4
+      - AUTOMATED_CONVERSION_KEEP_SOURCE=0
+      - AUTOMATED_CONVERSION_OUTPUT_DIR=/output
+    volumes:
+      - ${SYSTEM_DIR:-/DATA/ripper_system}/handbrake:/config
+      - ${MEDIA_DIR:-/DATA/ripper_media}/raw:/watch
+      - ${MEDIA_DIR:-/DATA/ripper_media}/finished:/output
