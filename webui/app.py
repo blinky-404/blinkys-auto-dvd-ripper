@@ -104,8 +104,6 @@ def sys_metrics():
     cpu_pct = min(100.0, round((load1 / cores) * 100, 1))
     return {"cpu_pct": cpu_pct, "disk_pct": disk_pct, "free_gb": free_gb, "total_gb": total_gb}
 
-@app.get("/api/status")
-
 def docker_sock(method, path, timeout=5):
     res = subprocess.run(["curl", "-s", "-X", method, "--unix-socket", "/var/run/docker.sock", "http://localhost" + path], capture_output=True, text=True, timeout=timeout)
     return res.stdout or ""
@@ -118,6 +116,7 @@ def installed_ai_models():
             found.append(os.path.basename(r))
     return sorted(set(found))
 
+@app.get("/api/status")
 def api_status():
     hw = detect_hardware()
     counts = {k: len([f for _, _, fs in os.walk(os.path.join(MEDIA_DIR, k)) for f in fs if not f.startswith(".")])
