@@ -99,7 +99,7 @@ def sys_metrics():
     free_gb = round(du.free / (1024**3), 1)
     total_gb = round(du.total / (1024**3), 1)
     disk_pct = round(((du.total - du.free) / du.total) * 100, 1)
-    load1 = os.getloadavg()
+    load1 = os.getloadavg()[0]
     cores = os.cpu_count() or 1
     cpu_pct = min(100.0, round((load1 / cores) * 100, 1))
     return {"cpu_pct": cpu_pct, "disk_pct": disk_pct, "free_gb": free_gb, "total_gb": total_gb}
