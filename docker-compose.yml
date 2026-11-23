@@ -30,6 +30,7 @@ services:
       - PUID=${PUID:-1000}
       - PGID=${PGID:-1000}
       - FB_NOAUTH=true
+    command: "--noauth"
     volumes:
       - ${MEDIA_DIR:-/DATA/ripper_media}:/srv
       - ${SYSTEM_DIR:-/DATA/ripper_system}/filebrowser:/database
