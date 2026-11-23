@@ -163,7 +163,7 @@
   <script>
   <script>
     const h = window.location.hostname;
-    ['mkv','hb','files'].forEach(k => { const f = document.getElementById('if-'+k); if (f) f.src = `http://${h}:${f.dataset.port}`; });
+    ['mkv','hb','files'].forEach(k => { const f = document.getElementById('if-'+k); if (f) f.src = window.location.protocol + '//' + h + ':' + f.dataset.port; });
     function tab(id) {
       document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden'));
       document.getElementById('sec-'+id).classList.remove('hidden');
