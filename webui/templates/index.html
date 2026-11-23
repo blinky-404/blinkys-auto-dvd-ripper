@@ -167,9 +167,6 @@
       await fetch('/api/config', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(out)});
       alert('Settings saved!');
     }
-    async function installAI() { const r = await (await fetch('/api/ai/install', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({model:'moondream'})})).json(); document.getElementById('ai-msg').innerText = r.message; }
-    async function loadMedia() {
-      const list = await (await fetch('/api/media/list')).json();
       document.getElementById('media-list').innerHTML = list.map(m => `<button onclick="playVid('${m.rel}','${m.name}')" class="p-2.5 text-left bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded flex justify-between"><span>[${m.folder}] ${m.name}</span><span class="text-slate-400">${m.mb} MB</span></button>`).join('') || '<div class="text-slate-400">No media files found yet.</div>';
     }
     function playVid(rel, name) { const v = document.getElementById('vid-player'); v.src = '/api/media/stream?path=' + encodeURIComponent(rel); v.play(); document.getElementById('vid-label').innerText = 'Streaming: ' + name; }
