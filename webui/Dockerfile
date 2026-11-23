@@ -1,0 +1,9 @@
+FROM python:3.11-slim
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg curl docker.io usbutils && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY webui/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY webui/ .
+COPY scripts/ /app/scripts/
+RUN chmod +x /app/scripts/*.sh /app/scripts/*.py
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8090"]
