@@ -125,7 +125,7 @@ def api_status():
     pct_match = re.findall(r"(\d+\.\d+)\s*%", hb_log)
     hb_progress = float(pct_match[-1]) if pct_match else 0.0
     containers = {}
-    for c in ["makemkv", "handbrake", "ripper-filebrowser", "ripper-ai-vision"]:
+    cmd = f"apt-get update -qq && apt-get install -y -qq zstd curl && curl -fL --retry 10 --retry-delay 2 -C - https://github.com/ollama/ollama/releases/latest/download/ollama-linux-amd64.tar.zst -o /tmp/ollama.tar.zst && tar --zstd -xf /tmp/ollama.tar.zst -C {SYSTEM_DIR}/ollama && rm -f /tmp/ollama.tar.zst && OLLAMA_MODELS={SYSTEM_DIR}/ollama/models {SYSTEM_DIR}/ollama/bin/ollama serve >/tmp/ollama.log 2>&1 & sleep 3 && OLLAMA_MODELS={SYSTEM_DIR}/ollama/models {SYSTEM_DIR}/ollama/bin/ollama pull {model} && pkill -f 'ollama serve'"
         raw = docker_sock("GET", f"/containers/{c}/json")
         containers[c] = json.loads(raw).get("State", {}).get("Status", "not_installed") if "State" in raw else "not_installed"
     return {"hardware": hw, "counts": counts, "hb_progress": hb_progress, "sys": sys_metrics(), "ai_models": installed_ai_models(), "containers": containers}
