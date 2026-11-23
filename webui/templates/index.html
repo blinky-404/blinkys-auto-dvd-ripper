@@ -161,11 +161,38 @@
     </section>
   </main>
   <script>
+  <script>
     const h = window.location.hostname;
-    ['mkv','hb','files'].forEach(k => { const f = document.getElementById('if-'+k); f.src = `http://${h}:${f.dataset.port}`; });
+    ['mkv','hb','files'].forEach(k => { const f = document.getElementById('if-'+k); if (f) f.src = `http://${h}:${f.dataset.port}`; });
     function tab(id) {
+      document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden'));
+      document.getElementById('sec-'+id).classList.remove('hidden');
+      if (id === 'logs') loadLogs();
+      if (id === 'setup') loadSetup();
+      if (id === 'player') loadMedia();
+    }
+    async function poll() {
+      const r = await (await fetch('/api/status')).json();
       document.getElementById('warn-nodrive').classList.toggle('hidden', r.hardware.drives.length > 0);
       document.getElementById('warn-usb').classList.toggle('hidden', !r.hardware.usb_power_warning);
+      const db = document.getElementById('drives-bar');
+      db.classList.toggle('hidden', r.hardware.drives.length === 0);
+      db.innerHTML = r.hardware.drives.map(d => `<span style="padding:4px 10px;border-radius:12px;background:#064e3b;color:#6ee7b7;font-size:12px;margin-right:6px;">${d.model} (${d.device})</span>`).join('');
+      document.getElementById('cpu-txt').innerText = r.sys.cpu_pct + '%';
+      document.getElementById('cpu-bar').style.width = r.sys.cpu_pct + '%';
+      document.getElementById('disk-free').innerText = r.sys.free_gb + ' / ' + r.sys.total_gb;
+      document.getElementById('disk-txt').innerText = r.sys.disk_pct + '%';
+      document.getElementById('disk-bar').style.width = r.sys.disk_pct + '%';
+      document.getElementById('hb-pct').innerText = r.hb_progress + '%';
+      document.getElementById('hb-bar').style.width = r.hb_progress + '%';
+      document.getElementById('svc-status').innerText = Object.entries(r.containers).map(([k,v]) => `${k}: ${v}`).join(' | ');
+      document.getElementById('queue-counts').innerHTML = Object.entries(r.counts).map(([k,v]) => `<div style="padding:8px;background:#1e293b;border-radius:6px;"><div style="font-size:16px;font-weight:bold;color:#fff;">${v}</div><div style="font-size:10px;color:#94a3b8;">${k}</div></div>`).join('');
+    }
+    async function restartSvc(s) { await fetch('/api/restart/'+s, {method:'POST'}); poll(); }
+    async function runOrg() { await fetch('/api/organize', {method:'POST'}); setTimeout(poll, 1500); }
+    async function loadLogs() { const l = await (await fetch('/api/logs')).json(); ['mkv','aud','hb','org'].forEach((k,i) => document.getElementById('box-'+k).innerText = l[['makemkv','audio','handbrake','organizer'][i]]); }
+    function exportReport() { const s = ['mkv','aud','hb','org'].map((k,i) => document.getElementById('lg-'+k).checked ? ['makemkv','audio','handbrake','organizer'][i] : '').filter(Boolean).join(','); window.location = `/api/logs/export?sections=${s}&save_server=${document.getElementById('lg-srv').checked}`; }
+    async function loadSetup() { const c = await (await fetch('/api/config')).json(); Object.entries(c).forEach(([k,v]) => { const el = document.getElementById('cfg-'+k); if (!el) return; el.type === 'checkbox' ? el.checked = (v === 'true') : el.value = v; }); }
     async function saveSetup() { const out = {}; document.querySelectorAll('[id^="cfg-"]').forEach(el => { out[el.id.replace('cfg-','')] = el.type === 'checkbox' ? String(el.checked) : el.value; }); await fetch('/api/config', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(out)}); alert('Settings saved!'); }
     async function installAI() { const r = await (await fetch('/api/ai/install', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({model:'moondream'})})).json(); document.getElementById('ai-msg').innerText = r.message; }
     async function loadMedia() { const list = await (await fetch('/api/media/list')).json(); document.getElementById('media-list').innerHTML = list.map(m => `<button onclick="playVid('${m.rel}','${m.name}')" style="display:flex;justify-content:space-between;width:100%;margin-bottom:6px;background:#1e293b;"><span>[${m.folder}] ${m.name}</span><span>${m.mb} MB</span></button>`).join('') || '<div>No media files found yet.</div>'; }
