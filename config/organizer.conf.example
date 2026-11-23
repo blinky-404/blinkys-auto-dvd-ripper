@@ -1,4 +1,41 @@
-# Copy to /DATA/ripper/organizer.conf and paste your TMDB Read Access Token:
-TMDB_TOKEN="PASTE_YOUR_TMDB_TOKEN_HERE"
-DEST_MOVIES_DIR="/DATA/ripper/organized_movies"
+# Blinky's Auto DVD Ripper - Modular Configuration
+
+# === 1. IDENTIFICATION & METADATA ENGINE ===
+# Modes: db_only | db_then_ai | ai_only | none
+IDENTIFY_MODE="db_then_ai"
+# Primary Database: tmdb | tvmaze | musicbrainz | none
+PRIMARY_DB="tmdb"
+TMDB_TOKEN=""
+
+# === 2. SNAPSHOTS & AI VISION FALLBACK ===
+ENABLE_UNMATCHED_SNAPSHOTS=true
+# AI Provider: local_ollama | gemini | openai | none
+AI_PROVIDER="local_ollama"
+LOCAL_AI_MODEL="moondream"
+AI_API_KEY=""
+
+# === 3. PRE-CONVERSION & AUDIO GATEKEEPER ===
+ENABLE_SILENT_QUARANTINE=true
+ENABLE_DTS_CONVERSION=true
+ENABLE_RAW_AUDIO_BACKUP=true
+
+# === 4. QUALITY & RUNTIME FILTERING ===
+ENABLE_RUNTIME_CHECK=true
 MIN_RUNTIME_MINS=45
+ENABLE_QUALITY_SORT=true
+MIN_VIDEO_HEIGHT=300
+MIN_VIDEO_BITRATE_KBPS=400
+
+# === 5. REPORTS, SCHEDULE & LOG RETENTION ===
+SAVE_MOVIE_INFO_TXT=true
+AUTO_ORGANIZE_ENABLED=true
+AUTO_ORGANIZE_TIME="03:00"
+LOG_MAX_LINES=500
+
+# === 6. HARDWARE, CPU & MULTI-DRIVE CONCURRENCY ===
+# GPU Modes: cpu | qsv | vaapi | nvenc
+GPU_ACCEL="cpu"
+MAX_CPU_PERCENT=100
+# Multi-Drive Modes: sequential | simultaneous
+DRIVE_MODE="sequential"
+MAX_CONCURRENT_DRIVES=1
