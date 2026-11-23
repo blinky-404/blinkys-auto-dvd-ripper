@@ -139,14 +139,6 @@
     const h = window.location.hostname;
     ['mkv','hb','files'].forEach(k => { const f = document.getElementById('if-'+k); f.src = `http://${h}:${f.dataset.port}`; });
     function tab(id) {
-      document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden'));
-      document.getElementById('sec-'+id).classList.remove('hidden');
-      if (id === 'logs') loadLogs();
-      if (id === 'setup') loadSetup();
-      if (id === 'player') loadMedia();
-    }
-    async function poll() {
-      const r = await (await fetch('/api/status')).json();
       document.getElementById('warn-nodrive').classList.toggle('hidden', r.hardware.drives.length > 0);
       document.getElementById('warn-usb').classList.toggle('hidden', !r.hardware.usb_power_warning);
       document.getElementById('drives-bar').innerHTML = r.hardware.drives.map(d => `<span class="px-3 py-1 rounded-full bg-emerald-950 border border-emerald-600 text-emerald-300 text-xs">${d.model} (${d.device})</span>`).join('');
