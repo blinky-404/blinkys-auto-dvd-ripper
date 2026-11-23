@@ -99,7 +99,7 @@ def sys_metrics():
     free_gb = round(du.free / (1024**3), 1)
     total_gb = round(du.total / (1024**3), 1)
     disk_pct = round(((du.total - du.free) / du.total) * 100, 1)
-    load1 = os.getloadavg()[0]
+    load1 = os.getloadavg()[0][0]
     cores = os.cpu_count() or 1
     cpu_pct = min(100.0, round((load1 / cores) * 100, 1))
     return {"cpu_pct": cpu_pct, "disk_pct": disk_pct, "free_gb": free_gb, "total_gb": total_gb}
@@ -153,9 +153,9 @@ async def install_local_ai(request: Request):
     return {"ok": True, "message": f"Pulling {model} in background; container will stop automatically once ready."}
 
 def collect_logs():
-    mk_raw = subprocess.run(["docker", "logs", "--tail", "250", "makemkv"], capture_output=True, text=True).stdout
+    mk_raw = subprocess.run(["docker", "logs", "--tail", "250", "makemkv"], capture_output=True, text=True).stdout or ""
     mk_filt = "\n".join([l for l in mk_raw.splitlines() if re.search(r"(error|fail|sector|hash|title|cell|skip|eject|complete|rip)", l, re.I)])
-    hb_raw = subprocess.run(["docker", "logs", "--tail", "150", "handbrake"], capture_output=True, text=True).stdout
+    hb_raw = subprocess.run(["docker", "logs", "--tail", "150", "handbrake"], capture_output=True, text=True).stdout or ""
     hb_filt = "\n".join([l for l in hb_raw.splitlines() if re.search(r"(error|fail|encoding|complete|scan|title)", l, re.I)])
     aud = open(os.path.join(LOG_DIR, "audio_audit.log")).read() if os.path.exists(os.path.join(LOG_DIR, "audio_audit.log")) else ""
     org = open(os.path.join(LOG_DIR, "organizer.log")).read() if os.path.exists(os.path.join(LOG_DIR, "organizer.log")) else ""

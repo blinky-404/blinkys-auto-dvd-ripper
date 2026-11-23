@@ -24,23 +24,40 @@
       <div id="warn-usb" class="warn hidden"><strong>USB Power Warning:</strong> Kernel logs show a USB reset/brownout. Use a rear motherboard USB 3.0 port or powered hub.</div>
       <div id="drives-bar" class="hidden"></div>
       <div>
-        <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;margin-bottom:8px;">Container Controls</div>
+        <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;margin-bottom:8px;">Container Controls & Status</div>
         <button onclick="restartSvc('makemkv')">Restart MakeMKV</button>
         <button onclick="restartSvc('handbrake')">Restart HandBrake</button>
         <button onclick="runOrg()">Run Organizer Now</button>
-        <div id="svc-status" style="margin-top:8px;font-size:12px;color:#94a3b8;"></div>
+        <span id="svc-status" style="margin-left:12px;font-size:12px;color:#94a3b8;"></span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;background:transparent;border:none;padding:0;margin-bottom:16px;">
+        <div style="background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:16px;text-align:center;">
+          <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;margin-bottom:6px;">CPU Load Tachometer</div>
+          <svg viewBox="0 0 200 115" style="width:190px;margin:0 auto;display:block;">
+            <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#1e293b" stroke-width="14" stroke-linecap="round"/>
+            <path d="M 156 44 A 80 80 0 0 1 180 100" fill="none" stroke="#ef4444" stroke-width="14" stroke-linecap="round"/>
+            <g id="cpu-needle" transform="rotate(-90 100 100)" style="transition:transform 0.5s ease-out;"><polygon points="97,100 100,26 103,100" fill="#38bdf8"/><circle cx="100" cy="100" r="7" fill="#e2e8f0"/></g>
+            <text id="cpu-txt" x="100" y="86" text-anchor="middle" fill="#f8fafc" font-size="18" font-weight="bold">0%</text>
+          </svg>
+        </div>
+        <div style="background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:16px;text-align:center;">
+          <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;margin-bottom:6px;">Storage Capacity</div>
+          <svg viewBox="0 0 200 115" style="width:190px;margin:0 auto;display:block;">
+            <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#1e293b" stroke-width="14" stroke-linecap="round"/>
+            <g id="disk-needle" transform="rotate(-90 100 100)" style="transition:transform 0.5s ease-out;"><polygon points="97,100 100,26 103,100" fill="#a855f7"/><circle cx="100" cy="100" r="7" fill="#e2e8f0"/></g>
+            <text id="disk-txt" x="100" y="86" text-anchor="middle" fill="#f8fafc" font-size="18" font-weight="bold">0%</text>
+          </svg>
+          <div style="font-size:11px;color:#94a3b8;margin-top:2px;"><span id="disk-free">--</span> GB Free</div>
+        </div>
       </div>
       <div>
-        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;"><span>CPU Usage</span><span id="cpu-txt">0%</span></div>
-        <div style="background:#1e293b;border-radius:6px;height:10px;margin-bottom:12px;"><div id="cpu-bar" style="background:#38bdf8;height:10px;border-radius:6px;width:0%"></div></div>
-        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;"><span>Storage Space Used (<span id="disk-free">--</span> GB Free)</span><span id="disk-txt">0%</span></div>
-        <div style="background:#1e293b;border-radius:6px;height:10px;margin-bottom:12px;"><div id="disk-bar" style="background:#a855f7;height:10px;border-radius:6px;width:0%"></div></div>
-        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;"><span>HandBrake Active Encode Progress</span><span id="hb-pct">0%</span></div>
-        <div style="background:#1e293b;border-radius:6px;height:10px;"><div id="hb-bar" style="background:#10b981;height:10px;border-radius:6px;width:0%"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px;"><span>HandBrake Active Encode Progress</span><span id="hb-pct">0%</span></div>
+        <div style="background:#1e293b;border-radius:6px;height:12px;"><div id="hb-bar" style="background:#10b981;height:12px;border-radius:6px;width:0%;transition:width 0.4s;"></div></div>
         <div id="queue-counts" style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:14px;text-align:center;"></div>
       </div>
     </section>
-    <section id="sec-mkv" class="hidden"><div style="display:flex;justify-content:space-between;"><span>MakeMKV Web GUI</span><a id="lnk-mkv" target="_blank" style="color:#38bdf8;font-size:12px;">Open Fullscreen ↗</a></div><iframe id="if-mkv" data-port="5800"></iframe></section>
+    
+<section id="sec-mkv" class="hidden"><div style="display:flex;justify-content:space-between;"><span>MakeMKV Web GUI</span><a id="lnk-mkv" target="_blank" style="color:#38bdf8;font-size:12px;">Open Fullscreen ↗</a></div><iframe id="if-mkv" data-port="5800"></iframe></section>
     <section id="sec-hb" class="hidden"><div style="display:flex;justify-content:space-between;"><span>HandBrake Web GUI</span><a id="lnk-hb" target="_blank" style="color:#38bdf8;font-size:12px;">Open Fullscreen ↗</a></div><iframe id="if-hb" data-port="5801"></iframe></section>
     <section id="sec-files" class="hidden"><div style="display:flex;justify-content:space-between;"><span>File Manager</span><a id="lnk-files" target="_blank" style="color:#38bdf8;font-size:12px;">Open Fullscreen ↗</a></div><iframe id="if-files" data-port="8091"></iframe></section>
     <section id="sec-player" class="hidden">
@@ -118,11 +135,11 @@
       const db = document.getElementById('drives-bar');
       db.classList.toggle('hidden', r.hardware.drives.length === 0);
       db.innerHTML = r.hardware.drives.map(d => `<span style="padding:4px 10px;border-radius:12px;background:#064e3b;color:#6ee7b7;font-size:12px;margin-right:6px;">${d.model} (${d.device})</span>`).join('');
-      document.getElementById('cpu-txt').innerText = r.sys.cpu_pct + '%';
-      document.getElementById('cpu-bar').style.width = r.sys.cpu_pct + '%';
+      document.getElementById('cpu-txt').textContent = r.sys.cpu_pct + '%';
+      document.getElementById('cpu-needle').setAttribute('transform', `rotate(${-90 + (r.sys.cpu_pct * 1.8)} 100 100)`);
       document.getElementById('disk-free').innerText = r.sys.free_gb + ' / ' + r.sys.total_gb;
-      document.getElementById('disk-txt').innerText = r.sys.disk_pct + '%';
-      document.getElementById('disk-bar').style.width = r.sys.disk_pct + '%';
+      document.getElementById('disk-txt').textContent = r.sys.disk_pct + '%';
+      document.getElementById('disk-needle').setAttribute('transform', `rotate(${-90 + (r.sys.disk_pct * 1.8)} 100 100)`);
       document.getElementById('hb-pct').innerText = r.hb_progress + '%';
       document.getElementById('hb-bar').style.width = r.hb_progress + '%';
       document.getElementById('svc-status').innerText = Object.entries(r.containers).map(([k,v]) => `${k}: ${v}`).join(' | ');
