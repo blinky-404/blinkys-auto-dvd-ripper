@@ -16,7 +16,7 @@ A hands-free, self-hosted **DVD & Blu-ray auto-ripping, encoding, quality-auditi
 
 ## Quick Start (One-Command Install)
 ```bash
-git clone https://github.com
+git clone https://github.com/blinky-404/blinkys-auto-dvd-ripper.git
 cd blinkys-auto-dvd-ripper
 chmod +x install.sh && ./install.sh
 ```
