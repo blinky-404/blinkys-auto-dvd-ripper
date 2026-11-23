@@ -46,42 +46,26 @@
       <button onclick="tab('guide')" class="w-full text-left px-3 py-2 rounded hover:bg-slate-800">Guide & How-To</button>
     </nav>
   </aside>
-  <main class="flex-1 overflow-y-auto p-6">
-    <section id="sec-dash" class="space-y-6">
-      <div id="warn-nodrive" class="hidden p-4 rounded-lg bg-amber-950/80 border border-amber-500 text-amber-200 text-sm">
-        <strong>No Optical Drive Detected:</strong> No <code>/dev/sr*</code> drive found. Connect a USB/SATA optical drive (or check VM USB passthrough) and click <strong>Restart MakeMKV</strong>.
+  <main>
+    <section id="sec-dash">
+      <div id="warn-nodrive" class="hidden"><strong>No Optical Drive Detected:</strong> No <code>/dev/sr*</code> drive found. Connect an optical drive (or verify VM USB passthrough) and click <strong>Restart MakeMKV</strong>.</div>
+      <div id="warn-usb" class="hidden"><strong>USB Power / Instability Warning:</strong> Kernel logs show a USB disconnect or brownout reset. Use a rear motherboard USB 3.0 port or a powered hub.</div>
+      <div id="drives-bar" class="hidden"></div>
+      <div>
+        <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;margin-bottom:8px;">Container Controls</div>
+        <button onclick="restartSvc('makemkv')">Restart MakeMKV</button>
+        <button onclick="restartSvc('handbrake')">Restart HandBrake</button>
+        <button onclick="runOrg()">Run Organizer Now</button>
+        <div id="svc-status" style="margin-top:8px;font-size:12px;color:#94a3b8;"></div>
       </div>
-      <div id="warn-usb" class="hidden p-4 rounded-lg bg-red-950/80 border border-red-500 text-red-200 text-sm">
-        <strong>USB Power / Instability Warning:</strong> Kernel logs show a USB disconnect or brownout reset. Use a rear motherboard USB 3.0 port or a powered USB hub.
-      </div>
-      <div id="drives-bar" class="flex flex-wrap gap-2"></div>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="card">
-          <div class="text-xs text-slate-400 uppercase mb-2">Container Controls</div>
-            <button onclick="restartSvc('makemkv')" class="btn btn-indigo">Restart MakeMKV</button>
-            <button onclick="restartSvc('handbrake')" class="btn btn-green">Restart HandBrake</button>
-            <button onclick="runOrg()" class="btn">Run Organizer Now</button>
-          </div>
-          <div id="svc-status" class="mt-3 text-xs text-slate-400"></div>
-        </div>
-        <div class="card">
-          <div class="flex justify-between text-xs text-slate-400 mb-1"><span>HandBrake Active Encode Progress</span><span id="hb-pct">0%</span></div>
-          <div class="w-full bg-slate-800 rounded-full h-3"><div id="hb-bar" class="bg-emerald-500 h-3 rounded-full transition-all" style="width:0%"></div></div>
-          <div id="queue-counts" class="grid-6"></div>
-        </div>
-      </div>
-    </section>
-            <button onclick="restartSvc('makemkv')" class="btn btn-indigo">Restart MakeMKV</button>
-            <button onclick="restartSvc('handbrake')" class="btn btn-green">Restart HandBrake</button>
-            <button onclick="runOrg()" class="btn">Run Organizer Now</button>
-          </div>
-          <div id="svc-status" class="mt-3 text-xs text-slate-400"></div>
-        </div>
-        <div class="card">
-          <div class="flex justify-between text-xs text-slate-400 mb-1"><span>HandBrake Active Encode Progress</span><span id="hb-pct">0%</span></div>
-          <div class="w-full bg-slate-800 rounded-full h-3"><div id="hb-bar" class="bg-emerald-500 h-3 rounded-full transition-all" style="width:0%"></div></div>
-          <div id="queue-counts" class="grid-6"></div>
-        </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;"><span>CPU Usage</span><span id="cpu-txt">0%</span></div>
+        <div style="background:#1e293b;border-radius:6px;height:10px;margin-bottom:12px;"><div id="cpu-bar" style="background:#38bdf8;height:10px;border-radius:6px;width:0%"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;"><span>Storage Space Used (<span id="disk-free">--</span> GB Free)</span><span id="disk-txt">0%</span></div>
+        <div style="background:#1e293b;border-radius:6px;height:10px;margin-bottom:12px;"><div id="disk-bar" style="background:#a855f7;height:10px;border-radius:6px;width:0%"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;"><span>HandBrake Active Encode Progress</span><span id="hb-pct">0%</span></div>
+        <div style="background:#1e293b;border-radius:6px;height:10px;"><div id="hb-bar" style="background:#10b981;height:10px;border-radius:6px;width:0%"></div></div>
+        <div id="queue-counts" style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:14px;text-align:center;"></div>
       </div>
     </section>
     <section id="sec-mkv" class="hidden h-full"><iframe id="if-mkv" data-port="{{ ports.makemkv }}" class="w-full h-full rounded border border-slate-800"></iframe></section>
