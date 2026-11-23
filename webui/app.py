@@ -76,7 +76,7 @@ def detect_hardware():
         m_path = f"/sys/block/{name}/device/model"
         model = open(m_path).read().strip() if os.path.exists(m_path) else "Optical Drive"
         drives.append({"device": sr, "model": model})
-    dmesg = subprocess.run(["dmesg"], capture_output=True, text=True).stdout[-8000:]
+    dmesg = subprocess.run(["dmesg"], capture_output=True, text=True).stdout[-8000:] if os.path.exists("/bin/dmesg") or os.path.exists("/usr/bin/dmesg") else ""
     usb_warn = bool(re.search(r"(reset high-speed USB|error -71|error -110|over-current)", dmesg, re.I))
     gpus = ["cpu"]
     if os.path.exists("/dev/dri"):

@@ -36,14 +36,14 @@
       <p class="text-xs text-slate-400">v2.0 Control Center</p>
     </div>
     <nav class="flex-1 p-3 space-y-1 text-sm" id="nav">
-      <button onclick="tab('dash')" class="w-full text-left px-3 py-2 rounded bg-sky-600/20 text-sky-300 font-medium">Dashboard</button>
-      <button onclick="tab('mkv')" class="w-full text-left px-3 py-2 rounded hover:bg-slate-800">MakeMKV</button>
-      <button onclick="tab('hb')" class="w-full text-left px-3 py-2 rounded hover:bg-slate-800">HandBrake</button>
-      <button onclick="tab('files')" class="w-full text-left px-3 py-2 rounded hover:bg-slate-800">File Manager</button>
-      <button onclick="tab('player')" class="w-full text-left px-3 py-2 rounded hover:bg-slate-800">Media Test Player</button>
-      <button onclick="tab('logs')" class="w-full text-left px-3 py-2 rounded hover:bg-slate-800">Logs & Reports</button>
-      <button onclick="tab('setup')" class="w-full text-left px-3 py-2 rounded hover:bg-slate-800">Setup & Toggles</button>
-      <button onclick="tab('guide')" class="w-full text-left px-3 py-2 rounded hover:bg-slate-800">Guide & How-To</button>
+      <button onclick="tab('dash', this)" class="w-full text-left px-3 py-2 rounded bg-sky-600/20 text-sky-300 font-medium">Dashboard</button>
+      <button onclick="tab('mkv', this)" class="w-full text-left px-3 py-2 rounded hover:bg-slate-800">MakeMKV</button>
+      <button onclick="tab('hb', this)" class="w-full text-left px-3 py-2 rounded hover:bg-slate-800">HandBrake</button>
+      <button onclick="tab('files', this)" class="w-full text-left px-3 py-2 rounded hover:bg-slate-800">File Manager</button>
+      <button onclick="tab('player', this)" class="w-full text-left px-3 py-2 rounded hover:bg-slate-800">Media Test Player</button>
+      <button onclick="tab('logs', this)" class="w-full text-left px-3 py-2 rounded hover:bg-slate-800">Logs & Reports</button>
+      <button onclick="tab('setup', this)" class="w-full text-left px-3 py-2 rounded hover:bg-slate-800">Setup & Toggles</button>
+      <button onclick="tab('guide', this)" class="w-full text-left px-3 py-2 rounded hover:bg-slate-800">Guide & How-To</button>
     </nav>
   </aside>
   <main>
@@ -68,9 +68,9 @@
         <div id="queue-counts" style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:14px;text-align:center;"></div>
       </div>
     </section>
-    <section id="sec-mkv" class="hidden h-full"><iframe id="if-mkv" data-port="{{ ports.makemkv }}" class="w-full h-full rounded border border-slate-800"></iframe></section>
-    <section id="sec-hb" class="hidden h-full"><iframe id="if-hb" data-port="{{ ports.handbrake }}" class="w-full h-full rounded border border-slate-800"></iframe></section>
-    <section id="sec-files" class="hidden h-full"><iframe id="if-files" data-port="{{ ports.filebrowser }}" class="w-full h-full rounded border border-slate-800"></iframe></section>
+    <section id="sec-mkv" class="hidden"><div style="display:flex;justify-content:space-between;align-items:center;"><span>MakeMKV Web GUI</span><a id="lnk-mkv" target="_blank" style="color:#38bdf8;font-size:12px;">Open Fullscreen ↗</a></div><iframe id="if-mkv" data-port="5800"></iframe></section>
+    <section id="sec-hb" class="hidden"><div style="display:flex;justify-content:space-between;align-items:center;"><span>HandBrake Web GUI</span><a id="lnk-hb" target="_blank" style="color:#38bdf8;font-size:12px;">Open Fullscreen ↗</a></div><iframe id="if-hb" data-port="5801"></iframe></section>
+    <section id="sec-files" class="hidden"><div style="display:flex;justify-content:space-between;align-items:center;"><span>File Manager</span><a id="lnk-files" target="_blank" style="color:#38bdf8;font-size:12px;">Open Fullscreen ↗</a></div><iframe id="if-files" data-port="8091"></iframe></section>
     <section id="sec-player" class="hidden space-y-4">
       <div class="flex justify-between items-center"><h2 class="text-lg font-bold text-sky-400">Universal Media Test Player (.MKV & .MP4)</h2><button onclick="loadMedia()" class="btn btn-dark">Refresh List</button></div>
       <div class="bg-black rounded-lg border border-slate-800 p-2"><video id="vid-player" controls class="w-full max-h-96 mx-auto"></video><div id="vid-label" class="text-xs text-slate-400 mt-1 text-center">Select any raw .mkv or finished .mp4 below to stream in your browser.</div></div>
@@ -121,18 +121,15 @@
           <label class="flex items-center gap-2"><input type="checkbox" id="cfg-ENABLE_UNMATCHED_SNAPSHOTS"> Capture 2x2 Snapshot Grid on Unmatched</label>
           <label class="flex items-center gap-2"><input type="checkbox" id="cfg-SAVE_MOVIE_INFO_TXT"> Save _info.txt Receipt Inside Movie Folder</label>
           <label class="flex items-center gap-2"><input type="checkbox" id="cfg-AUTO_ORGANIZE_ENABLED"> Daily Auto-Organizer at <input type="time" id="cfg-AUTO_ORGANIZE_TIME" class="p-1 bg-slate-800 rounded"></label>
-          <div class="grid grid-cols-2 gap-2 pt-1">
-            <label>GPU Accel <select id="cfg-GPU_ACCEL" class="w-full mt-1 p-1 bg-slate-800 rounded"><option value="cpu">CPU (x264)</option><option value="qsv">Intel QuickSync</option><option value="vaapi">AMD/Intel VAAPI</option><option value="nvenc">NVIDIA NVENC</option></select></label>
-            <label>Max CPU % <input type="number" id="cfg-MAX_CPU_PERCENT" min="10" max="100" class="w-full mt-1 p-1 bg-slate-800 rounded"></label>
-          </div>
-          <div class="grid grid-cols-2 gap-2">
-          <div class="grid grid-cols-2 gap-2 pt-1">
-            <label>GPU Accel <select id="cfg-GPU_ACCEL" class="w-full mt-1 p-1 bg-slate-800 rounded"><option value="cpu">CPU (x264)</option><option value="qsv">Intel QuickSync</option><option value="vaapi">AMD/Intel VAAPI</option><option value="nvenc">NVIDIA NVENC</option></select></label>
-            <label>Max CPU % <input type="number" id="cfg-MAX_CPU_PERCENT" min="10" max="100" class="w-full mt-1 p-1 bg-slate-800 rounded"></label>
-          </div>
-          <div class="grid grid-cols-2 gap-2">
-            <label>Drive Mode <select id="cfg-DRIVE_MODE" class="w-full mt-1 p-1 bg-slate-800 rounded"><option value="sequential">Sequential Queue (USB)</option><option value="simultaneous">Simultaneous (SATA)</option></select></label>
-            <label>Max Drives <input type="number" id="cfg-MAX_CONCURRENT_DRIVES" min="1" max="8" class="w-full mt-1 p-1 bg-slate-800 rounded"></label>
+          <div style="margin-top:8px;">
+            <label>GPU Hardware Acceleration <select id="cfg-GPU_ACCEL" style="width:100%;"><option value="cpu">CPU (Software x264)</option><option value="qsv">Intel QuickSync (QSV)</option><option value="vaapi">AMD / Intel VAAPI</option><option value="nvenc">NVIDIA NVENC</option></select></label>
+            <label>Max CPU Cap: <strong id="cpu-slider-val" style="color:#38bdf8;">100%</strong>
+              <input type="range" id="cfg-MAX_CPU_PERCENT" min="10" max="100" step="5" value="100" oninput="document.getElementById('cpu-slider-val').innerText=this.value+'%'" style="width:100%;accent-color:#38bdf8;">
+            </label>
+            <label>Multi-Drive Mode <select id="cfg-DRIVE_MODE" onchange="toggleDrivesInput()" style="width:100%;"><option value="sequential">Sequential Queue (Recommended for USB)</option><option value="simultaneous">Simultaneous Ripping (Internal SATA)</option></select></label>
+            <label id="lbl-max-drives">Max Simultaneous Drives <span style="font-size:10px;color:#94a3b8;">(Applies to Simultaneous mode only)</span>
+              <input type="number" id="cfg-MAX_CONCURRENT_DRIVES" min="1" max="8" style="width:100%;">
+            </label>
           </div>
         </div>
       </div>
@@ -146,8 +143,8 @@
   </main>
   <script>
     const h = window.location.hostname;
-    ['mkv','hb','files'].forEach(k => { const f = document.getElementById('if-'+k); if (f) f.src = window.location.protocol + '//' + h + ':' + f.dataset.port; });
-    function tab(id) {
+    ['mkv','hb','files'].forEach(k => { const f = document.getElementById('if-'+k), a = document.getElementById('lnk-'+k); const u = window.location.protocol + '//' + h + ':' + f.dataset.port; if (f) f.src = u; if (a) a.href = u; });
+    function tab(id, btn) { document.querySelectorAll('nav button').forEach(b => b.classList.remove('active')); if (btn) btn.classList.add('active');
       document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden'));
       document.getElementById('sec-'+id).classList.remove('hidden');
       if (id === 'logs') loadLogs();
@@ -175,10 +172,11 @@
     async function runOrg() { await fetch('/api/organize', {method:'POST'}); setTimeout(poll, 1500); }
     async function loadLogs() { const l = await (await fetch('/api/logs')).json(); ['mkv','aud','hb','org'].forEach((k,i) => document.getElementById('box-'+k).innerText = l[['makemkv','audio','handbrake','organizer'][i]]); }
     function exportReport() { const s = ['mkv','aud','hb','org'].map((k,i) => document.getElementById('lg-'+k).checked ? ['makemkv','audio','handbrake','organizer'][i] : '').filter(Boolean).join(','); window.location = `/api/logs/export?sections=${s}&save_server=${document.getElementById('lg-srv').checked}`; }
-    async function loadSetup() { const c = await (await fetch('/api/config')).json(); Object.entries(c).forEach(([k,v]) => { const el = document.getElementById('cfg-'+k); if (!el) return; el.type === 'checkbox' ? el.checked = (v === 'true') : el.value = v; }); }
-    async function saveSetup() { const out = {}; document.querySelectorAll('[id^="cfg-"]').forEach(el => { out[el.id.replace('cfg-','')] = el.type === 'checkbox' ? String(el.checked) : el.value; }); await fetch('/api/config', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(out)}); alert('Settings saved!'); }
+    async function loadSetup() { const c = await (await fetch('/api/config')).json(); Object.entries(c).forEach(([k,v]) => { const el = document.getElementById('cfg-'+k); if (!el) return; el.type === 'checkbox' ? el.checked = (v === 'true') : el.value = v; if (k === 'MAX_CPU_PERCENT') document.getElementById('cpu-slider-val').innerText = v + '%'; }); toggleDrivesInput(); }
+    async function toggleDrivesInput() { const seq = document.getElementById('cfg-DRIVE_MODE').value === 'sequential'; const inp = document.getElementById('cfg-MAX_CONCURRENT_DRIVES'); inp.disabled = seq; document.getElementById('lbl-max-drives').style.opacity = seq ? '0.45' : '1'; }
+    function saveSetup() { const out = {}; document.querySelectorAll('[id^="cfg-"]').forEach(el => { out[el.id.replace('cfg-','')] = el.type === 'checkbox' ? String(el.checked) : el.value; }); await fetch('/api/config', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(out)}); alert('Settings saved!'); }
     async function installAI() { const r = await (await fetch('/api/ai/install', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({model:'moondream'})})).json(); document.getElementById('ai-msg').innerText = r.message; }
-    async function loadMedia() { const list = await (await fetch('/api/media/list')).json(); document.getElementById('media-list').innerHTML = list.map(m => `<button onclick="playVid('${m.rel}','${m.name}')" style="display:flex;justify-content:space-between;width:100%;margin-bottom:6px;background:#1e293b;"><span>[${m.folder}] ${m.name}</span><span>${m.mb} MB</span></button>`).join('') || '<div>No media files found yet.</div>'; }
+    async function loadMedia() { const list = await (await fetch('/api/media/list')).json(); document.getElementById('media-list').innerHTML = list.map(m => `<button onclick="playVid('${m.rel}','${m.name}')" style="display:flex;justify-content:space-between;width:100%;margin-bottom:6px;background:#1e293b;color:#f1f5f9;padding:10px;border-radius:6px;"><span><strong>[${m.folder}]</strong> ${m.name}</span><span>${m.mb} MB</span></button>`).join('') || '<div>No media files found yet.</div>'; }
     function playVid(rel, name) { const v = document.getElementById('vid-player'); v.src = '/api/media/stream?path=' + encodeURIComponent(rel); v.play(); document.getElementById('vid-label').innerText = 'Streaming: ' + name; }
     setInterval(poll, 4000); poll();
   </script>
