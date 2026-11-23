@@ -3,6 +3,7 @@ from datetime import datetime
 from fastapi import FastAPI, Request, Query
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, StreamingResponse, FileResponse
 from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 from apscheduler.schedulers.background import BackgroundScheduler
 
 SYSTEM_DIR = os.environ.get("SYSTEM_DIR", "/DATA/ripper_system")
@@ -13,6 +14,7 @@ os.makedirs(LOG_DIR, exist_ok=True)
 
 app = FastAPI(title="Blinky's Auto DVD Ripper")
 templates = Jinja2Templates(directory="templates")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 scheduler = BackgroundScheduler()
 
 def read_conf():
