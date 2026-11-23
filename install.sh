@@ -14,7 +14,7 @@ read -p "File Manager Port: " FILEBROWSER_PORT
 FILEBROWSER_PORT="${FILEBROWSER_PORT:-8091}"
 
 sudo mkdir -p "$BASE_DIR/ripper_system/"{config,logs,makemkv,handbrake,filebrowser,ollama}
-sudo mkdir -p "$BASE_DIR/ripper_media/"{raw,finished,organized_movies,low_quality_quarantine,raw_audio_backups,no_audio}
+sudo mkdir -p "$BASE_DIR/ripper_media/"{raw,finished,organized_movies,low_quality_quarantine,raw_audio_backups,short_videos,no_audio}
 sudo chmod -R 777 "$BASE_DIR/ripper_system" "$BASE_DIR/ripper_media"
 [ -f "$BASE_DIR/ripper_system/config/organizer.conf" ] || cp config/organizer.conf.example "$BASE_DIR/ripper_system/config/organizer.conf"
 

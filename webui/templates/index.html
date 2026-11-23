@@ -27,7 +27,7 @@
         <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;margin-bottom:8px;">Container Controls & Status</div>
         <button onclick="restartSvc('makemkv')">Restart MakeMKV</button>
         <button onclick="restartSvc('handbrake')">Restart HandBrake</button>
-        <button onclick="runOrg()">Run Organizer Now</button>
+        <button onclick="runOrg()">Run Organizer Now</button><span id="action-status-pill" style="margin-left:10px;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:#1e293b;border:1px solid #334155;color:#94a3b8;">● System: All controls ready</span>
         <span id="svc-status" style="margin-left:12px;font-size:12px;color:#94a3b8;"></span>
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;background:transparent;border:none;padding:0;margin-bottom:16px;">
@@ -159,5 +159,20 @@
     async function loadMedia() { const list = await (await fetch('/api/media/list')).json(); document.getElementById('media-list').innerHTML = list.map(m => `<button onclick="playVid('${m.rel}','${m.name}')" style="display:flex;justify-content:space-between;width:100%;margin-bottom:6px;background:#1e293b;color:#f1f5f9;padding:10px;border-radius:6px;"><span><strong>[${m.folder}]</strong> ${m.name}</span><span>${m.mb} MB</span></button>`).join('') || '<div>No media files found yet.</div>'; }
     function playVid(rel, name) { const v = document.getElementById('vid-player'); v.src = '/api/media/stream?path=' + encodeURIComponent(rel); v.play(); document.getElementById('vid-label').innerText = 'Streaming: ' + name; }
     setInterval(poll, 4000); poll();
-  </script>
+  
+async function pollActionStatus() {
+  try {
+    const r = await fetch('/api/action_status');
+    const d = await r.json();
+    const el = document.getElementById('action-status-pill');
+    if (!el) return;
+    const colors = {idle:['#1e293b','#334155','#94a3b8'], running:['#422006','#eab308','#fde047'], success:['#052e16','#22c55e','#86efac'], error:['#450a0a','#ef4444','#fca5a5']};
+    const c = colors[d.status] || colors.idle;
+    el.style.background = c; el.style.borderColor = c; el.style.color = c;
+    el.textContent = `● ${d.task}: ${d.detail}${d.updated ? ' (' + d.updated + ')' : ''}`;
+  } catch (e) {}
+}
+setInterval(pollActionStatus, 2000);
+pollActionStatus();
+</script>
 </body></html>

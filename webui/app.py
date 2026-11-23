@@ -105,7 +105,7 @@ def sys_metrics():
     return {"cpu_pct": cpu_pct, "disk_pct": disk_pct, "free_gb": free_gb, "total_gb": total_gb}
 
 def docker_sock(method, path, timeout=5):
-    res = subprocess.run(["curl", "-s", "-X", method, "--unix-socket", "/var/run/docker.sock", "http://localhost" + path], capture_output=True, text=True, timeout=timeout)
+    res = subprocess.run(["curl", "-s", "-X", method, "--unix-socket", "/var/run/docker.sock", "http://localhost" + path], capture_output=True, text=True, errors="replace", timeout=timeout)
     return res.stdout or ""
 
 def installed_ai_models():
@@ -120,26 +120,50 @@ def installed_ai_models():
 def api_status():
     hw = detect_hardware()
     counts = {k: len([f for _, _, fs in os.walk(os.path.join(MEDIA_DIR, k)) for f in fs if not f.startswith(".")])
-              for k in ["raw", "finished", "organized_movies", "low_quality_quarantine", "raw_audio_backups", "no_audio"]}
+              for k in ["raw", "finished", "organized_movies", "low_quality_quarantine", "raw_audio_backups", "short_videos", "no_audio"]}
     hb_log = docker_sock("GET", "/containers/handbrake/logs?stdout=1&stderr=1&tail=30")
     pct_match = re.findall(r"(\d+\.\d+)\s*%", hb_log)
     hb_progress = float(pct_match[-1]) if pct_match else 0.0
     containers = {}
     cmd = f"apt-get update -qq && apt-get install -y -qq zstd curl && curl -fL --retry 10 --retry-delay 2 -C - https://github.com/ollama/ollama/releases/latest/download/ollama-linux-amd64.tar.zst -o /tmp/ollama.tar.zst && tar --zstd -xf /tmp/ollama.tar.zst -C {SYSTEM_DIR}/ollama && rm -f /tmp/ollama.tar.zst && OLLAMA_MODELS={SYSTEM_DIR}/ollama/models {SYSTEM_DIR}/ollama/bin/ollama serve >/tmp/ollama.log 2>&1 & sleep 3 && OLLAMA_MODELS={SYSTEM_DIR}/ollama/models {SYSTEM_DIR}/ollama/bin/ollama pull {model} && pkill -f 'ollama serve'"
         raw = docker_sock("GET", f"/containers/{c}/json")
-        containers[c] = json.loads(raw).get("State", {}).get("Status", "not_installed") if "State" in raw else "not_installed"
+        containers[c] = json.loads(raw).get("State", {}).get("Status", "ready (0 MB idle)" if os.path.exists("/DATA/ripper_system/ollama/models/manifests") else "not_installed") if "State" in raw else "ready (0 MB idle)" if os.path.exists("/DATA/ripper_system/ollama/models/manifests") else "not_installed"
     return {"hardware": hw, "counts": counts, "hb_progress": hb_progress, "sys": sys_metrics(), "ai_models": installed_ai_models(), "containers": containers}
+
+ACTION_STATE = {"task": "System", "status": "idle", "detail": "All controls ready", "updated": ""}
+
+@app.get("/api/action_status")
+def api_action_status():
+    return ACTION_STATE
 
 @app.post("/api/restart/{name}")
 def restart_container(name: str):
+    import datetime, threading
     if name not in ("makemkv", "handbrake", "ripper-filebrowser"):
         return JSONResponse({"ok": False, "error": "Invalid container"}, status_code=400)
-    docker_sock("POST", f"/containers/{name}/restart", timeout=15)
+    def _do_restart():
+        ACTION_STATE.update({"task": name, "status": "running", "detail": "Restarting container...", "updated": datetime.datetime.now().strftime("%H:%M:%S")})
+        res = docker_sock("POST", f"/containers/{name}/restart", timeout=20)
+        if "error" in res.lower():
+            ACTION_STATE.update({"task": name, "status": "error", "detail": res[:80], "updated": datetime.datetime.now().strftime("%H:%M:%S")})
+        else:
+            ACTION_STATE.update({"task": name, "status": "success", "detail": "Restarted cleanly", "updated": datetime.datetime.now().strftime("%H:%M:%S")})
+    threading.Thread(target=_do_restart, daemon=True).start()
     return {"ok": True}
 
 @app.post("/api/organize")
 def trigger_organize():
-    run_organizer_job()
+    import datetime, threading
+    def _do_org():
+        ACTION_STATE.update({"task": "Organizer", "status": "running", "detail": "Inspecting & identifying files (AI Vision may take ~25s)...", "updated": datetime.datetime.now().strftime("%H:%M:%S")})
+        try:
+            r = subprocess.run(["/app/scripts/organize-rips.sh"], capture_output=True, text=True)
+            if r.returncode != 0:
+                raise RuntimeError((r.stderr or r.stdout or "Exit " + str(r.returncode)).strip().splitlines()[-1])
+            ACTION_STATE.update({"task": "Organizer", "status": "success", "detail": "Completed cleanly", "updated": datetime.datetime.now().strftime("%H:%M:%S")})
+        except Exception as ex:
+            ACTION_STATE.update({"task": "Organizer", "status": "error", "detail": str(ex)[:80], "updated": datetime.datetime.now().strftime("%H:%M:%S")})
+    threading.Thread(target=_do_org, daemon=True).start()
     return {"ok": True}
 
 @app.get("/api/config")
@@ -192,7 +216,7 @@ def export_logs(sections: str = "makemkv,audio,handbrake,organizer", save_server
 @app.get("/api/media/list")
 def list_media():
     items = []
-    for folder in ["raw", "finished", "organized_movies", "low_quality_quarantine", "raw_audio_backups", "no_audio"]:
+    for folder in ["raw", "finished", "organized_movies", "low_quality_quarantine", "raw_audio_backups", "short_videos", "no_audio"]:
         base = os.path.join(MEDIA_DIR, folder)
         for r, _, fns in os.walk(base):
             for fn in sorted(fns):
@@ -211,7 +235,7 @@ def stream_media(path: str = Query(...)):
     proc = subprocess.Popen(["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", full, "-c:v", "libx264", "-preset", "ultrafast", "-crf", "26", "-c:a", "aac", "-b:a", "128k", "-movflags", "frag_keyframe+empty_moov", "-f", "mp4", "pipe:1"], stdout=subprocess.PIPE)
     return StreamingResponse(iter(lambda: proc.stdout.read(65536), b""), media_type="video/mp4")
     items = []
-    for folder in ["raw", "finished", "organized_movies", "low_quality_quarantine", "raw_audio_backups", "no_audio"]:
+    for folder in ["raw", "finished", "organized_movies", "low_quality_quarantine", "raw_audio_backups", "short_videos", "no_audio"]:
         base = os.path.join(MEDIA_DIR, folder)
         for r, _, fns in os.walk(base):
             for fn in sorted(fns):

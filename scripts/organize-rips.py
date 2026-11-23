@@ -157,19 +157,23 @@ def identify_with_ai(grid_jpg):
 
     if provider == "local_ollama":
         model = CFG.get("LOCAL_AI_MODEL", "moondream")
-        subprocess.run(["docker", "start", "ripper-ai-vision"], capture_output=True)
+        obin = "/DATA/ripper_system/ollama/bin/ollama"
+        env = dict(os.environ, OLLAMA_MODELS="/DATA/ripper_system/ollama/models", OLLAMA_HOST="127.0.0.1:11434")
+        srv = subprocess.Popen([obin, "serve"], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) if os.path.exists(obin) else None
+        if not srv: subprocess.run(["docker", "start", "ripper-ai-vision"], capture_output=True)
         time.sleep(3)
         try:
             payload = json.dumps({"model": model, "prompt": prompt, "images": [b64_img], "stream": False}).encode()
-            req = urllib.request.Request("http://127.0.0.1:11434/api/generate", data=payload, headers={"Content-Type": "application/json"})
-            with urllib.request.urlopen(req, timeout=90) as resp:
+            req = urllib.request.Request("http://127.0.0", data=payload, headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(req, timeout=120) as resp:
                 ans = json.loads(resp.read().decode()).get("response", "").strip()
                 if ans and "UNKNOWN" not in ans.upper():
                     return re.sub(r'[\\/:*?"<>|]', '', ans).strip()
-        except Exception as e:
-            log(f"   -> Local Ollama Vision error: {e}")
+        except Exception as ex:
+            log(f"   -> Local Ollama Vision error: {ex}")
         finally:
-            subprocess.run(["docker", "stop", "ripper-ai-vision"], capture_output=True)
+            if srv: srv.terminate(); srv.wait(timeout=5)
+            else: subprocess.run(["docker", "stop", "ripper-ai-vision"], capture_output=True)
     elif provider == "gemini" and CFG.get("AI_API_KEY"):
         url = "https://://googleapis.com" + CFG["AI_API_KEY"]
         payload = json.dumps({"contents": [{"parts": [{"text": prompt}, {"inline_data": {"mime_type": "image/jpeg", "data": b64_img}}]}]}).encode()
@@ -203,11 +207,9 @@ def process_finished():
             log("   -> QUARANTINED to no_audio/ (0 audio streams)")
             continue
         min_mins = float(CFG.get("MIN_RUNTIME_MINS", 45))
-        if CFG.get("ENABLE_RUNTIME_CHECK") == "true" and info["duration_mins"] < min_mins:
-            shutil.move(fpath, os.path.join(MEDIA_DIR, "no_audio", f"{stem}_SHORT_{int(info['duration_mins'])}m{ext}"))
-            log(f"   -> QUARANTINED to no_audio/ (Runtime {info['duration_mins']}m < {min_mins}m)")
-            continue
-        mode, query = CFG.get("IDENTIFY_MODE", "db_then_ai"), clean_disc_name(fname)
+        is_short = (CFG.get("ENABLE_RUNTIME_CHECK") == "true" and info["duration_mins"] < min_mins)
+        mode, query = CFG.get("IDENTIFY_MODE", "db_then_ai"), re.sub(r"\b[A-Z]\d+\b", "", clean_disc_name(fname)).strip()
+        if len(query) <= 3: query = ""
         matched = query_database(query) if mode in ("db_only", "db_then_ai") and query.upper() not in ("DVD VIDEO", "DISC 1", "DISC 2", "VIDEO TS", "MOVIE") else None
         tmp_snap, has_snap = f"/tmp/grid_{int(time.time()*1000)}.jpg", False
         if not matched and mode in ("ai_only", "db_then_ai"):
@@ -226,15 +228,21 @@ def process_finished():
                 is_low, reasons = True, reasons + [f"Height {info['height']}p"]
             if 0 < info["bitrate_kbps"] < int(CFG.get("MIN_VIDEO_BITRATE_KBPS", 400)):
                 is_low, reasons = True, reasons + [f"Bitrate {info['bitrate_kbps']}kbps"]
-        dest_dir = os.path.join(MEDIA_DIR, "low_quality_quarantine" if is_low else "organized_movies", safe)
+        base_bucket = "short_videos" if is_short else ("low_quality_quarantine" if is_low else "organized_movies")
+        dest_dir = os.path.join(MEDIA_DIR, base_bucket, safe)
         os.makedirs(dest_dir, exist_ok=True)
-        shutil.move(fpath, os.path.join(dest_dir, f"{safe}{ext}"))
+        shutil.move(fpath, os.path.join(dest_dir, f"{safe} - Extra ({info['duration_mins']}m){ext}" if is_short else f"{safe}{ext}"))
+        for r_root, _, r_files in os.walk(os.path.join(MEDIA_DIR, "raw")):
+            if f"{stem}.mkv" in r_files:
+                os.remove(os.path.join(r_root, f"{stem}.mkv"))
+                if not os.listdir(r_root) and r_root != os.path.join(MEDIA_DIR, "raw"):
+                    os.rmdir(r_root)
         if has_snap and os.path.exists(tmp_snap):
             shutil.move(tmp_snap, os.path.join(dest_dir, "preview_grid.jpg")) if "(Unmatched)" in safe else os.remove(tmp_snap)
         if CFG.get("SAVE_MOVIE_INFO_TXT") == "true":
             with open(os.path.join(dest_dir, f"{safe}_info.txt"), "w") as tf:
                 tf.write(f"Title: {safe}\nSource: {fname}\nStatus: {'LOW QUALITY' if is_low else 'FULL QUALITY'}\nResolution: {info['width']}x{info['height']} ({info['v_codec']})\nBitrate: {info['bitrate_kbps']} kbps\nRuntime: {info['duration_mins']} mins\nAudio: {', '.join(info['a_codecs']) or 'NONE'}\n")
-        log(f"   -> Routed to {'low_quality_quarantine/' if is_low else 'organized_movies/'}{safe}/")
+        log(f"   -> Routed to {base_bucket}/{safe}/")
 
 if __name__ == "__main__":
     process_finished()
