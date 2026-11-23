@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8"><title>Blinky's Auto DVD Ripper</title>
+  <script src="https://tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 flex h-screen overflow-hidden font-sans">
+  <aside class="w-64 bg-slate-900 border-r border-slate-800 flex flex-col">
+    <div class="p-4 border-b border-slate-800">
+      <h1 class="text-lg font-bold text-sky-400">Blinky's Auto DVD Ripper</h1>
+      <p class="text-xs text-slate-400">v2.0 Control Center</p>
+    </div>
+    <nav class="flex-1 p-3 space-y-1 text-sm" id="nav">
+      <button onclick="tab('dash')" class="w-full text-left px-3 py-2 rounded bg-sky-600/20 text-sky-300 font-medium">Dashboard</button>
+      <button onclick="tab('mkv')" class="w-full text-left px-3 py-2 rounded hover:bg-slate-800">MakeMKV</button>
+      <button onclick="tab('hb')" class="w-full text-left px-3 py-2 rounded hover:bg-slate-800">HandBrake</button>
+      <button onclick="tab('files')" class="w-full text-left px-3 py-2 rounded hover:bg-slate-800">File Manager</button>
+      <button onclick="tab('player')" class="w-full text-left px-3 py-2 rounded hover:bg-slate-800">Media Test Player</button>
+      <button onclick="tab('logs')" class="w-full text-left px-3 py-2 rounded hover:bg-slate-800">Logs & Reports</button>
+      <button onclick="tab('setup')" class="w-full text-left px-3 py-2 rounded hover:bg-slate-800">Setup & Toggles</button>
+      <button onclick="tab('guide')" class="w-full text-left px-3 py-2 rounded hover:bg-slate-800">Guide & How-To</button>
+    </nav>
+  </aside>
+  <main class="flex-1 overflow-y-auto p-6">
+    <section id="sec-dash" class="space-y-6">
+      <div id="warn-nodrive" class="hidden p-4 rounded-lg bg-amber-950/80 border border-amber-500 text-amber-200 text-sm">
+        <strong>No Optical Drive Detected:</strong> No <code>/dev/sr*</code> drive found. Connect a USB/SATA optical drive (or check VM USB passthrough) and click <strong>Restart MakeMKV</strong>.
+      </div>
+      <div id="warn-usb" class="hidden p-4 rounded-lg bg-red-950/80 border border-red-500 text-red-200 text-sm">
+        <strong>USB Power / Instability Warning:</strong> Kernel logs show a USB disconnect or brownout reset. Use a rear motherboard USB 3.0 port or a powered USB hub.
+      </div>
+      <div id="drives-bar" class="flex flex-wrap gap-2"></div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="p-4 rounded-lg bg-slate-900 border border-slate-800">
+          <div class="text-xs text-slate-400 uppercase mb-2">Container Controls</div>
+            <button onclick="restartSvc('makemkv')" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded text-xs font-medium">Restart MakeMKV</button>
+            <button onclick="restartSvc('handbrake')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded text-xs font-medium">Restart HandBrake</button>
+            <button onclick="runOrg()" class="px-3 py-1.5 bg-sky-600 hover:bg-sky-500 rounded text-xs font-medium">Run Organizer Now</button>
+          </div>
+          <div id="svc-status" class="mt-3 text-xs text-slate-400"></div>
+        </div>
+        <div class="p-4 rounded-lg bg-slate-900 border border-slate-800 md:col-span-2">
+          <div class="flex justify-between text-xs text-slate-400 mb-1"><span>HandBrake Active Encode Progress</span><span id="hb-pct">0%</span></div>
+          <div class="w-full bg-slate-800 rounded-full h-3"><div id="hb-bar" class="bg-emerald-500 h-3 rounded-full transition-all" style="width:0%"></div></div>
+          <div id="queue-counts" class="grid grid-cols-3 sm:grid-cols-6 gap-2 mt-4 text-center text-xs"></div>
+        </div>
+      </div>
+    </section>
+            <button onclick="restartSvc('makemkv')" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded text-xs font-medium">Restart MakeMKV</button>
+            <button onclick="restartSvc('handbrake')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded text-xs font-medium">Restart HandBrake</button>
+            <button onclick="runOrg()" class="px-3 py-1.5 bg-sky-600 hover:bg-sky-500 rounded text-xs font-medium">Run Organizer Now</button>
+          </div>
+          <div id="svc-status" class="mt-3 text-xs text-slate-400"></div>
+        </div>
+        <div class="p-4 rounded-lg bg-slate-900 border border-slate-800 md:col-span-2">
+          <div class="flex justify-between text-xs text-slate-400 mb-1"><span>HandBrake Active Encode Progress</span><span id="hb-pct">0%</span></div>
+          <div class="w-full bg-slate-800 rounded-full h-3"><div id="hb-bar" class="bg-emerald-500 h-3 rounded-full transition-all" style="width:0%"></div></div>
+          <div id="queue-counts" class="grid grid-cols-3 sm:grid-cols-6 gap-2 mt-4 text-center text-xs"></div>
+        </div>
+      </div>
+    </section>
+    <section id="sec-mkv" class="hidden h-full"><iframe id="if-mkv" data-port="{{ ports.makemkv }}" class="w-full h-full rounded border border-slate-800"></iframe></section>
+    <section id="sec-hb" class="hidden h-full"><iframe id="if-hb" data-port="{{ ports.handbrake }}" class="w-full h-full rounded border border-slate-800"></iframe></section>
+    <section id="sec-files" class="hidden h-full"><iframe id="if-files" data-port="{{ ports.filebrowser }}" class="w-full h-full rounded border border-slate-800"></iframe></section>
+    <section id="sec-player" class="hidden space-y-4">
+      <div class="flex justify-between items-center"><h2 class="text-lg font-bold text-sky-400">Universal Media Test Player (.MKV & .MP4)</h2><button onclick="loadMedia()" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 rounded text-xs">Refresh List</button></div>
+      <div class="bg-black rounded-lg border border-slate-800 p-2"><video id="vid-player" controls class="w-full max-h-96 mx-auto"></video><div id="vid-label" class="text-xs text-slate-400 mt-1 text-center">Select any raw .mkv or finished .mp4 below to stream in your browser.</div></div>
+      <div id="media-list" class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs"></div>
+    </section>
+    <section id="sec-logs" class="hidden space-y-4">
+      <div class="p-4 rounded-lg bg-slate-900 border border-slate-800 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex flex-wrap gap-3 text-xs">
+          <label><input type="checkbox" id="lg-mkv" checked> MakeMKV Alerts</label>
+          <label><input type="checkbox" id="lg-aud" checked> Audio Audits</label>
+          <label><input type="checkbox" id="lg-hb" checked> HandBrake</label>
+          <label><input type="checkbox" id="lg-org" checked> Organizer</label>
+          <label class="text-amber-300"><input type="checkbox" id="lg-srv"> Also Save Copy to Server</label>
+        </div>
+        <div class="flex gap-2">
+          <button onclick="loadLogs()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded text-xs">Refresh</button>
+          <button onclick="exportReport()" class="px-3 py-1.5 bg-sky-600 hover:bg-sky-500 rounded text-xs font-medium">Download .TXT Report</button>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+        <div><div class="font-semibold text-indigo-400 mb-1">MakeMKV Sector & Disc Alerts</div><pre id="box-mkv" class="p-3 bg-slate-900 border border-slate-800 rounded h-56 overflow-auto"></pre></div>
+        <div><div class="font-semibold text-emerald-400 mb-1">Audio Audits & DTS/PCM Backups</div><pre id="box-aud" class="p-3 bg-slate-900 border border-slate-800 rounded h-56 overflow-auto"></pre></div>
+        <div><div class="font-semibold text-amber-400 mb-1">HandBrake Encoding & Errors</div><pre id="box-hb" class="p-3 bg-slate-900 border border-slate-800 rounded h-56 overflow-auto"></pre></div>
+        <div><div class="font-semibold text-sky-400 mb-1">TMDB / AI Organizer Log</div><pre id="box-org" class="p-3 bg-slate-900 border border-slate-800 rounded h-56 overflow-auto"></pre></div>
+      </div>
+    </section>
+    <section id="sec-setup" class="hidden space-y-4 max-w-4xl">
+      <div class="flex justify-between items-center"><h2 class="text-lg font-bold text-sky-400">Modular Setup & Feature Toggles</h2><button onclick="saveSetup()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded text-xs font-bold">Save Settings</button></div>
+      <div id="setup-form" class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+        <div class="p-4 bg-slate-900 border border-slate-800 rounded-lg space-y-3">
+          <div class="font-bold text-sky-300">1. Identification & AI Vision</div>
+          <label class="block">Mode <span title="Choose Database + AI Fallback, Database Only, or AI-Only detection" class="px-1.5 rounded-full bg-slate-700 cursor-help">?</span>
+            <select id="cfg-IDENTIFY_MODE" class="w-full mt-1 p-1.5 bg-slate-800 rounded"><option value="db_then_ai">Database + AI Fallback</option><option value="db_only">Database Only</option><option value="ai_only">AI Vision Only</option><option value="none">Disabled</option></select></label>
+          <label class="block">Database <span title="TMDB for Movies/TV, TVmaze for TV (no key), MusicBrainz for Concerts (no key)" class="px-1.5 rounded-full bg-slate-700 cursor-help">?</span>
+            <select id="cfg-PRIMARY_DB" class="w-full mt-1 p-1.5 bg-slate-800 rounded"><option value="tmdb">TMDB (Movies & TV)</option><option value="tvmaze">TVmaze (TV Shows - Free)</option><option value="musicbrainz">MusicBrainz (Music/Concerts - Free)</option></select></label>
+          <label class="block">TMDB Bearer Token <input type="password" id="cfg-TMDB_TOKEN" class="w-full mt-1 p-1.5 bg-slate-800 rounded"></label>
+          <label class="block">AI Provider <select id="cfg-AI_PROVIDER" class="w-full mt-1 p-1.5 bg-slate-800 rounded"><option value="local_ollama">On-Demand Local Ollama (0 Idle RAM)</option><option value="gemini">Google Gemini API</option></select></label>
+          <label class="block">Cloud AI Key (If using Gemini) <input type="password" id="cfg-AI_API_KEY" class="w-full mt-1 p-1.5 bg-slate-800 rounded"></label>
+          <div class="flex items-center gap-2 pt-1"><button type="button" onclick="installAI()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded font-medium">Install Local AI (moondream)</button><span id="ai-msg" class="text-slate-400"></span></div>
+        </div>
+        <div class="p-4 bg-slate-900 border border-slate-800 rounded-lg space-y-2.5">
+          <div class="font-bold text-sky-300">2. Filters, Schedule & Hardware</div>
+          <label class="flex items-center gap-2"><input type="checkbox" id="cfg-ENABLE_SILENT_QUARANTINE"> Quarantine Silent Files <span title="Moves 0-audio files to no_audio/" class="px-1.5 rounded-full bg-slate-700 cursor-help">?</span></label>
+          <label class="flex items-center gap-2"><input type="checkbox" id="cfg-ENABLE_DTS_CONVERSION"> Auto-Convert DTS/PCM Audio <span title="Converts DTS/PCM tracks to AAC before HandBrake" class="px-1.5 rounded-full bg-slate-700 cursor-help">?</span></label>
+          <label class="flex items-center gap-2"><input type="checkbox" id="cfg-ENABLE_RAW_AUDIO_BACKUP"> Save Untouched .MKV Audio Backup</label>
+          <label class="flex items-center gap-2"><input type="checkbox" id="cfg-ENABLE_RUNTIME_CHECK"> Min Runtime (mins): <input type="number" id="cfg-MIN_RUNTIME_MINS" class="w-16 p-1 bg-slate-800 rounded"></label>
+          <label class="flex items-center gap-2"><input type="checkbox" id="cfg-ENABLE_QUALITY_SORT"> Quality Quarantine (<input type="number" id="cfg-MIN_VIDEO_HEIGHT" class="w-14 p-1 bg-slate-800 rounded">p / <input type="number" id="cfg-MIN_VIDEO_BITRATE_KBPS" class="w-16 p-1 bg-slate-800 rounded">kbps)</label>
+          <label class="flex items-center gap-2"><input type="checkbox" id="cfg-ENABLE_UNMATCHED_SNAPSHOTS"> Capture 2x2 Snapshot Grid on Unmatched</label>
+          <label class="flex items-center gap-2"><input type="checkbox" id="cfg-SAVE_MOVIE_INFO_TXT"> Save _info.txt Receipt Inside Movie Folder</label>
+          <label class="flex items-center gap-2"><input type="checkbox" id="cfg-AUTO_ORGANIZE_ENABLED"> Daily Auto-Organizer at <input type="time" id="cfg-AUTO_ORGANIZE_TIME" class="p-1 bg-slate-800 rounded"></label>
+          <div class="grid grid-cols-2 gap-2 pt-1">
+            <label>GPU Accel <select id="cfg-GPU_ACCEL" class="w-full mt-1 p-1 bg-slate-800 rounded"><option value="cpu">CPU (x264)</option><option value="qsv">Intel QuickSync</option><option value="vaapi">AMD/Intel VAAPI</option><option value="nvenc">NVIDIA NVENC</option></select></label>
+            <label>Max CPU % <input type="number" id="cfg-MAX_CPU_PERCENT" min="10" max="100" class="w-full mt-1 p-1 bg-slate-800 rounded"></label>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+          <div class="grid grid-cols-2 gap-2 pt-1">
+            <label>GPU Accel <select id="cfg-GPU_ACCEL" class="w-full mt-1 p-1 bg-slate-800 rounded"><option value="cpu">CPU (x264)</option><option value="qsv">Intel QuickSync</option><option value="vaapi">AMD/Intel VAAPI</option><option value="nvenc">NVIDIA NVENC</option></select></label>
+            <label>Max CPU % <input type="number" id="cfg-MAX_CPU_PERCENT" min="10" max="100" class="w-full mt-1 p-1 bg-slate-800 rounded"></label>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <label>Drive Mode <select id="cfg-DRIVE_MODE" class="w-full mt-1 p-1 bg-slate-800 rounded"><option value="sequential">Sequential Queue (USB)</option><option value="simultaneous">Simultaneous (SATA)</option></select></label>
+            <label>Max Drives <input type="number" id="cfg-MAX_CONCURRENT_DRIVES" min="1" max="8" class="w-full mt-1 p-1 bg-slate-800 rounded"></label>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section id="sec-guide" class="hidden max-w-3xl space-y-4 text-sm text-slate-300">
+      <h2 class="text-lg font-bold text-sky-400">Blinky's Auto DVD Ripper — Quick Guide & How-To</h2>
+      <div class="p-4 bg-slate-900 border border-slate-800 rounded-lg space-y-2"><h3 class="font-bold text-white">Movies vs. TV Box Sets vs. Concert DVDs</h3><p>For <strong>Movies</strong>, leave TMDB and Min Runtime (45m) enabled. For <strong>TV Series or Music DVDs</strong>, uncheck Min Runtime in <em>Setup</em> and switch Database to <strong>TVmaze</strong> or <strong>MusicBrainz</strong> (neither requires an API key).</p></div>
+      <div class="p-4 bg-slate-900 border border-slate-800 rounded-lg space-y-2"><h3 class="font-bold text-white">On-Demand Local AI Vision</h3><p>Click <strong>Install Local AI (moondream)</strong> in <em>Setup</em> to download a compact ~1.7 GB vision model. It stays completely stopped (0 MB RAM) until an unmatched disc needs identification, then spins down immediately.</p></div>
+      <div class="p-4 bg-slate-900 border border-slate-800 rounded-lg space-y-2"><h3 class="font-bold text-white">USB Power & Multi-Drive Tips</h3><p>If using USB optical drives, keep Drive Mode on <strong>Sequential Queue</strong> and plug into rear motherboard USB 3.0 ports or a powered hub. Internal SATA drives can use <strong>Simultaneous</strong> mode.</p></div>
+    </section>
+  </main>
+  <script>
+    const h = window.location.hostname;
+    ['mkv','hb','files'].forEach(k => { const f = document.getElementById('if-'+k); f.src = `http://${h}:${f.dataset.port}`; });
+    function tab(id) {
+      document.querySelectorAll('main > section').forEach(s => s.classList.add('hidden'));
+      document.getElementById('sec-'+id).classList.remove('hidden');
+      if (id === 'logs') loadLogs();
+      if (id === 'setup') loadSetup();
+      if (id === 'player') loadMedia();
+    }
+    async function poll() {
+      const r = await (await fetch('/api/status')).json();
+      document.getElementById('warn-nodrive').classList.toggle('hidden', r.hardware.drives.length > 0);
+      document.getElementById('warn-usb').classList.toggle('hidden', !r.hardware.usb_power_warning);
+      document.getElementById('drives-bar').innerHTML = r.hardware.drives.map(d => `<span class="px-3 py-1 rounded-full bg-emerald-950 border border-emerald-600 text-emerald-300 text-xs">${d.model} (${d.device})</span>`).join('');
+      document.getElementById('hb-pct').innerText = r.hb_progress + '%';
+      document.getElementById('hb-bar').style.width = r.hb_progress + '%';
+      document.getElementById('svc-status').innerText = Object.entries(r.containers).map(([k,v]) => `${k}: ${v}`).join(' | ');
+      document.getElementById('queue-counts').innerHTML = Object.entries(r.counts).map(([k,v]) => `<div class="p-2 bg-slate-800 rounded"><div class="text-base font-bold text-white">${v}</div><div class="text-[10px] text-slate-400">${k}</div></div>`).join('');
+    }
+    async function restartSvc(s) { await fetch('/api/restart/'+s, {method:'POST'}); poll(); }
+    async function runOrg() { await fetch('/api/organize', {method:'POST'}); setTimeout(poll, 1500); }
+    async function loadLogs() {
+      const l = await (await fetch('/api/logs')).json();
+      ['mkv','aud','hb','org'].forEach((k,i) => document.getElementById('box-'+k).innerText = l[['makemkv','audio','handbrake','organizer'][i]]);
+    }
+    function exportReport() {
+      const s = ['mkv','aud','hb','org'].map((k,i) => document.getElementById('lg-'+k).checked ? ['makemkv','audio','handbrake','organizer'][i] : '').filter(Boolean).join(',');
+      window.location = `/api/logs/export?sections=${s}&save_server=${document.getElementById('lg-srv').checked}`;
+    }
+    async function loadSetup() {
+      const c = await (await fetch('/api/config')).json();
+      Object.entries(c).forEach(([k,v]) => { const el = document.getElementById('cfg-'+k); if (!el) return; el.type === 'checkbox' ? el.checked = (v === 'true') : el.value = v; });
+    }
+    async function saveSetup() {
+      const out = {};
+      document.querySelectorAll('[id^="cfg-"]').forEach(el => { out[el.id.replace('cfg-','')] = el.type === 'checkbox' ? String(el.checked) : el.value; });
+      await fetch('/api/config', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(out)});
+      alert('Settings saved!');
+    }
+    async function installAI() { const r = await (await fetch('/api/ai/install', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({model:'moondream'})})).json(); document.getElementById('ai-msg').innerText = r.message; }
+    async function loadMedia() {
+      const list = await (await fetch('/api/media/list')).json();
+      document.getElementById('media-list').innerHTML = list.map(m => `<button onclick="playVid('${m.rel}','${m.name}')" class="p-2.5 text-left bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded flex justify-between"><span>[${m.folder}] ${m.name}</span><span class="text-slate-400">${m.mb} MB</span></button>`).join('') || '<div class="text-slate-400">No media files found yet.</div>';
+    }
+    function playVid(rel, name) { const v = document.getElementById('vid-player'); v.src = '/api/media/stream?path=' + encodeURIComponent(rel); v.play(); document.getElementById('vid-label').innerText = 'Streaming: ' + name; }
+    setInterval(poll, 4000); poll();
+  </script>
+</body></html>
