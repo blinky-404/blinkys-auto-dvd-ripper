@@ -185,3 +185,22 @@ def stream_media(path: str = Query(...)):
         return FileResponse(full, media_type="video/mp4")
     proc = subprocess.Popen(["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", full, "-c:v", "libx264", "-preset", "ultrafast", "-crf", "26", "-c:a", "aac", "-b:a", "128k", "-movflags", "frag_keyframe+empty_moov", "-f", "mp4", "pipe:1"], stdout=subprocess.PIPE)
     return StreamingResponse(iter(lambda: proc.stdout.read(65536), b""), media_type="video/mp4")
+    items = []
+    for folder in ["raw", "finished", "organized_movies", "low_quality_quarantine", "raw_audio_backups", "no_audio"]:
+        base = os.path.join(MEDIA_DIR, folder)
+        for r, _, fns in os.walk(base):
+            for fn in sorted(fns):
+                if fn.lower().endswith((".mp4", ".mkv", ".m4v")):
+                    full = os.path.join(r, fn)
+                    items.append({"folder": folder, "rel": os.path.relpath(full, MEDIA_DIR), "name": fn, "mb": round(os.path.getsize(full) / (1024*1024), 1)})
+    return items
+
+@app.get("/api/media/stream")
+def stream_media(path: str = Query(...)):
+    full = os.path.abspath(os.path.join(MEDIA_DIR, path))
+    if not full.startswith(os.path.abspath(MEDIA_DIR)) or not os.path.exists(full):
+        return JSONResponse({"error": "Not found"}, status_code=404)
+    if full.lower().endswith(".mp4"):
+        return FileResponse(full, media_type="video/mp4")
+    proc = subprocess.Popen(["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", full, "-c:v", "libx264", "-preset", "ultrafast", "-crf", "26", "-c:a", "aac", "-b:a", "128k", "-movflags", "frag_keyframe+empty_moov", "-f", "mp4", "pipe:1"], stdout=subprocess.PIPE)
+    return StreamingResponse(iter(lambda: proc.stdout.read(65536), b""), media_type="video/mp4")
