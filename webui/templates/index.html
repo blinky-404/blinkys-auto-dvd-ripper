@@ -91,7 +91,7 @@
           <label>TMDB Bearer Token <input type="password" id="cfg-TMDB_TOKEN" style="width:100%;"></label>
           <label>AI Provider <select id="cfg-AI_PROVIDER" style="width:100%;"><option value="local_ollama">On-Demand Local Ollama (0 Idle RAM)</option><option value="gemini">Google Gemini API</option></select></label>
           <label>Cloud AI Key <input type="password" id="cfg-AI_API_KEY" style="width:100%;"></label>
-          <button type="button" onclick="installAI()" style="background:#4f46e5;">Install Local AI (moondream)</button><div id="ai-msg" style="font-size:11px;color:#94a3b8;margin-top:4px;"></div>
+          <button type="button" onclick="installAI()" style="background:#4f46e5;">Install Local AI (moondream)</button><div id="ai-status-badge" style="font-size:11px;color:#38bdf8;margin-top:6px;">Checking local AI models...</div><div id="ai-msg" style="font-size:11px;color:#94a3b8;margin-top:2px;"></div>
         </div>
         <div style="background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:16px;">
           <div style="font-weight:700;color:#38bdf8;margin-bottom:10px;">2. Filters, Schedule & Hardware</div>
@@ -142,6 +142,7 @@
       document.getElementById('disk-needle').setAttribute('transform', `rotate(${-90 + (r.sys.disk_pct * 1.8)} 100 100)`);
       document.getElementById('hb-pct').innerText = r.hb_progress + '%';
       document.getElementById('hb-bar').style.width = r.hb_progress + '%';
+      const aiBadge = document.getElementById('ai-status-badge'); if (aiBadge) aiBadge.innerText = r.ai_models.length ? 'Installed Local AI: ' + r.ai_models.join(', ') : 'Status: No Local AI Installed';
       document.getElementById('svc-status').innerText = Object.entries(r.containers).map(([k,v]) => `${k}: ${v}`).join(' | ');
       document.getElementById('queue-counts').innerHTML = Object.entries(r.counts).map(([k,v]) => `<div style="padding:8px;background:#1e293b;border-radius:6px;"><div style="font-size:16px;font-weight:bold;color:#fff;">${v}</div><div style="font-size:10px;color:#94a3b8;">${k}</div></div>`).join('');
     }

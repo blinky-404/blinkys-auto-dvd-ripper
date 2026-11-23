@@ -105,25 +105,38 @@ def sys_metrics():
     return {"cpu_pct": cpu_pct, "disk_pct": disk_pct, "free_gb": free_gb, "total_gb": total_gb}
 
 @app.get("/api/status")
+
+def docker_sock(method, path, timeout=5):
+    res = subprocess.run(["curl", "-s", "-X", method, "--unix-socket", "/var/run/docker.sock", "http://localhost" + path], capture_output=True, text=True, timeout=timeout)
+    return res.stdout or ""
+
+def installed_ai_models():
+    m_dir = os.path.join(SYSTEM_DIR, "ollama", "models", "manifests")
+    found = []
+    for r, _, fs in os.walk(m_dir):
+        if fs:
+            found.append(os.path.basename(r))
+    return sorted(set(found))
+
 def api_status():
     hw = detect_hardware()
     counts = {k: len([f for _, _, fs in os.walk(os.path.join(MEDIA_DIR, k)) for f in fs if not f.startswith(".")])
               for k in ["raw", "finished", "organized_movies", "low_quality_quarantine", "raw_audio_backups", "no_audio"]}
-    hb_log = subprocess.run(["docker", "logs", "--tail", "30", "handbrake"], capture_output=True, text=True).stdout
+    hb_log = docker_sock("GET", "/containers/handbrake/logs?stdout=1&stderr=1&tail=30")
     pct_match = re.findall(r"(\d+\.\d+)\s*%", hb_log)
     hb_progress = float(pct_match[-1]) if pct_match else 0.0
     containers = {}
     for c in ["makemkv", "handbrake", "ripper-filebrowser", "ripper-ai-vision"]:
-        res = subprocess.run(["docker", "inspect", "-f", "{{.State.Status}}", c], capture_output=True, text=True)
-        containers[c] = res.stdout.strip() if res.returncode == 0 else "not_installed"
-    return {"hardware": hw, "counts": counts, "hb_progress": hb_progress, "sys": sys_metrics(), "containers": containers}
+        raw = docker_sock("GET", f"/containers/{c}/json")
+        containers[c] = json.loads(raw).get("State", {}).get("Status", "not_installed") if "State" in raw else "not_installed"
+    return {"hardware": hw, "counts": counts, "hb_progress": hb_progress, "sys": sys_metrics(), "ai_models": installed_ai_models(), "containers": containers}
 
 @app.post("/api/restart/{name}")
 def restart_container(name: str):
     if name not in ("makemkv", "handbrake", "ripper-filebrowser"):
         return JSONResponse({"ok": False, "error": "Invalid container"}, status_code=400)
-    res = subprocess.run(["docker", "restart", name], capture_output=True, text=True)
-    return {"ok": res.returncode == 0, "output": res.stdout or res.stderr}
+    docker_sock("POST", f"/containers/{name}/restart", timeout=15)
+    return {"ok": True}
 
 @app.post("/api/organize")
 def trigger_organize():
@@ -153,9 +166,9 @@ async def install_local_ai(request: Request):
     return {"ok": True, "message": f"Pulling {model} in background; container will stop automatically once ready."}
 
 def collect_logs():
-    mk_raw = subprocess.run(["docker", "logs", "--tail", "250", "makemkv"], capture_output=True, text=True).stdout or ""
+    mk_raw = docker_sock("GET", "/containers/makemkv/logs?stdout=1&stderr=1&tail=250")
     mk_filt = "\n".join([l for l in mk_raw.splitlines() if re.search(r"(error|fail|sector|hash|title|cell|skip|eject|complete|rip)", l, re.I)])
-    hb_raw = subprocess.run(["docker", "logs", "--tail", "150", "handbrake"], capture_output=True, text=True).stdout or ""
+    hb_raw = docker_sock("GET", "/containers/handbrake/logs?stdout=1&stderr=1&tail=150")
     hb_filt = "\n".join([l for l in hb_raw.splitlines() if re.search(r"(error|fail|encoding|complete|scan|title)", l, re.I)])
     aud = open(os.path.join(LOG_DIR, "audio_audit.log")).read() if os.path.exists(os.path.join(LOG_DIR, "audio_audit.log")) else ""
     org = open(os.path.join(LOG_DIR, "organizer.log")).read() if os.path.exists(os.path.join(LOG_DIR, "organizer.log")) else ""
