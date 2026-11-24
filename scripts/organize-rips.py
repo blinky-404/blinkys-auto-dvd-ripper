@@ -170,7 +170,7 @@ def lookup_tmdb(query, token, duration_mins=0):
         log(f"   -> TMDB lookup error: {e}")
     return None
 
-def lookup_tvmaze(query):
+def (lookup_tvmaze(query) if (duration_mins < 65 or re.search(r'(?i)s\d{1,2}e\d{1,2}', query)) else None):
     url = "https://://tvmaze.com" + urllib.parse.quote(query)
     try:
         with urllib.request.urlopen(url, timeout=10) as resp:
@@ -200,12 +200,12 @@ def lookup_musicbrainz(query):
         pass
     return None
 
-def query_database(query):
+def query_database(query, duration_mins=0):
     db = CFG.get("PRIMARY_DB", "tmdb")
     if db == "tmdb":
         return lookup_tmdb(query, CFG.get("TMDB_TOKEN", ""))
     elif db == "tvmaze":
-        return lookup_tvmaze(query)
+        return (lookup_tvmaze(query) if (duration_mins < 65 or re.search(r'(?i)s\d{1,2}e\d{1,2}', query)) else None)
     elif db == "musicbrainz":
         return lookup_musicbrainz(query)
     return None
@@ -357,7 +357,7 @@ def process_finished():
         raw_title = resolve_source_title(fpath, fname)
         query = re.sub(r"(\s*\(\d{4}\)|\s*\(Unmatched\)|_SHORT_\d+m|\b(special|director.?s|extended|unrated|widescreen|fullscreen|collector.?s|anniversary|remastered|deluxe|theatrical|blu-?ray|dvd)\s*(edition|cut|version)?\b|\bt\d+\b|\b[A-Z]\d+\b)", "", clean_disc_name(raw_title), flags=re.I).strip()
         if len(query) <= 3 or query.lower() in ("unidentified", "unknown", "untitled", "disc", "dvd", "movie", "video", "main"): query = ""
-        matched = query_database(query) if mode in ("db_only", "db_then_ai") and query.upper() not in ("DVD VIDEO", "DISC 1", "DISC 2", "VIDEO TS", "MOVIE") else None
+        matched = query_database(query, info.get("duration_mins", 0)) if mode in ("db_only", "db_then_ai") and query.upper() not in ("DVD VIDEO", "DISC 1", "DISC 2", "VIDEO TS", "MOVIE") else None
         tmp_snap, has_snap = f"/tmp/grid_{int(time.time()*1000)}.jpg", False
         if not matched and mode in ("ai_only", "db_then_ai"):
             cpu_now = current_cpu_pct()
@@ -376,7 +376,7 @@ def process_finished():
             if guess:
                 m_yr = re.search(r"\((\d{4})\)", guess)
                 clean_guess = re.sub(r"\s*\(\d{4}\)", "", guess).strip()
-                cand_matched = query_database(clean_guess)
+                cand_matched = query_database(clean_guess, info.get("duration_mins", 0))
                 cand_year = m_yr.group(1) if m_yr else (re.search(r"\((\d{4})\)", cand_matched or "").group(1) if re.search(r"\((\d{4})\)", cand_matched or "") else None)
                 actual_mins = info["duration_secs"] / 60.0
                 tmdb_rt = get_tmdb_runtime(cand_matched or clean_guess, cand_year, CFG.get("TMDB_API_KEY"))
@@ -428,7 +428,7 @@ def process_finished():
         if r_root == raw_base:
             return
         if disc_prefix and os.path.basename(r_root) != disc_prefix:
-            return
+            continue
         for cand in (f"{stem}.mkv", f"{raw_stem}.mkv"):
             if cand in r_files:
                 os.remove(os.path.join(r_root, cand))
@@ -449,7 +449,7 @@ def process_finished():
     now = time.time()
     for entry in os.listdir(raw_root) if os.path.isdir(raw_root) else []:
         if entry.startswith("."):
-            return
+            continue
         p = os.path.join(raw_root, entry)
         if os.path.isdir(p) and not os.listdir(p) and (now - os.path.getmtime(p)) > 600:
             try:
