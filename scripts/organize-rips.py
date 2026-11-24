@@ -178,7 +178,7 @@ def identify_with_ai(video_path, duration_secs, out_dir):
         srv = subprocess.Popen([obin, "serve"], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         for _ in range(15):
             try:
-                urllib.request.urlopen("http://127.0.0", timeout=1)
+                urllib.request.urlopen(f"http://127.0.0.1:{11434}/", timeout=1)
                 break
             except Exception:
                 time.sleep(0.5)
@@ -210,7 +210,7 @@ def identify_with_ai(video_path, duration_secs, out_dir):
                 with open(grid_path, "rb") as gf:
                     b64_img = base64.b64encode(gf.read()).decode()
                 payload = json.dumps({"model": model, "prompt": prompt, "images": [b64_img], "stream": False}).encode()
-                req = urllib.request.Request("http://127.0.0", data=payload, headers={"Content-Type": "application/json"})
+                req = urllib.request.Request(f"http://127.0.0.1:{11434}/", data=payload, headers={"Content-Type": "application/json"})
                 with urllib.request.urlopen(req, timeout=300) as resp:
                     ans = json.loads(resp.read().decode()).get("response", "").strip()
             elif provider == "gemini" and CFG.get("GEMINI_API_KEY"):
