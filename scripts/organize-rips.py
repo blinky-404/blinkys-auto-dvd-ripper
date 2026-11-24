@@ -156,6 +156,25 @@ def query_database(query):
     return None
 
 # Fallback: capture a 2x2 frame grid and query Local Ollama (moondream) or Cloud AI
+GENERIC_DISC_NAMES = {"dvd", "dvd_video", "video_ts", "bdmv", "disc", "disc1", "disc2", "disk", "untitled", "unknown", "unidentified", "volume", "movie", "video", "main", "finished", "ai_hold"}
+
+def is_generic_name(name):
+    cleaned = re.sub(r"[\s_\-]+", "_", (name or "").strip().lower()).strip("_")
+    return not cleaned or cleaned in GENERIC_DISC_NAMES or bool(re.fullmatch(r"(disc|disk|dvd|title|track|volume)_?\d*", cleaned))
+
+def resolve_source_title(fpath, fname):
+    stem, _ = os.path.splitext(fname)
+    parent = os.path.basename(os.path.dirname(fpath))
+    if not is_generic_name(parent):
+        return parent
+    raw_root = os.path.join(MEDIA_DIR, "raw")
+    for r, _, r_files in os.walk(raw_root):
+        if f"{stem}.mkv" in r_files and os.path.abspath(r) != os.path.abspath(raw_root):
+            raw_folder = os.path.basename(r)
+            if not is_generic_name(raw_folder):
+                return raw_folder
+    return fname
+
 def current_cpu_pct():
     try:
         load1 = os.getloadavg().__getitem__(0)
@@ -266,7 +285,8 @@ def process_finished():
             continue
         min_mins = float(CFG.get("MIN_RUNTIME_MINS", 45))
         is_short = (CFG.get("ENABLE_RUNTIME_CHECK") == "true" and info["duration_mins"] < min_mins)
-        mode, query = CFG.get("IDENTIFY_MODE", "db_then_ai"), re.sub(r"(\s*\(Unmatched\)|_SHORT_\d+m|\b(special|director.?s|extended|unrated|widescreen|fullscreen|collector.?s|anniversary|remastered|deluxe|theatrical|blu-?ray|dvd)\s*(edition|cut|version)?\b|\bt\d+\b|\b[A-Z]\d+\b)", "", clean_disc_name(os.path.basename(os.path.dirname(fpath)) if os.path.basename(os.path.dirname(fpath)) not in ("finished", "ai_hold") else fname), flags=re.I).strip()
+        raw_title = resolve_source_title(fpath, fname)
+        query = re.sub(r"(\s*\(Unmatched\)|_SHORT_\d+m|\b(special|director.?s|extended|unrated|widescreen|fullscreen|collector.?s|anniversary|remastered|deluxe|theatrical|blu-?ray|dvd)\s*(edition|cut|version)?\b|\bt\d+\b|\b[A-Z]\d+\b)", "", clean_disc_name(raw_title), flags=re.I).strip()
         if len(query) <= 3 or query.lower() in ("unidentified", "unknown", "untitled", "disc", "dvd", "movie", "video", "main"): query = ""
         matched = query_database(query) if mode in ("db_only", "db_then_ai") and query.upper() not in ("DVD VIDEO", "DISC 1", "DISC 2", "VIDEO TS", "MOVIE") else None
         tmp_snap, has_snap = f"/tmp/grid_{int(time.time()*1000)}.jpg", False
