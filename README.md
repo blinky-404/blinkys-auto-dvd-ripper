@@ -90,6 +90,15 @@ By default, all media and system folders live under `/DATA` (`DATA_DIR=/DATA` in
   * `low_quality_quarantine/`: Videos below your minimum resolution/bitrate threshold.
   * `no_audio/`: Broken rips containing `0` audio streams.
 
+## Updating an Existing Installation
+
+To pull the latest features and rebuild `ripper-ui` while keeping your `.env`, `organizer.conf` API keys, Ollama models, and ripped media intact:
+
+```bash
+cd ~/blinkys-auto-dvd-ripper
+chmod +x update.sh && ./update.sh
+```
+
 ## Uninstall / Clean Reset
 
 To cleanly stop all containers, remove the scheduled organizer cron job, and wipe `/DATA/ripper_system` (while preserving your ripped videos in `/DATA/ripper_media`):
