@@ -108,12 +108,18 @@ def clean_disc_name(filename):
     return re.sub(r'[._-]+', ' ', base).strip()
 
 # Query The Movie Database (TMDB) API for canonical title & release year
+def _http_get_json(url, headers=None, timeout=10):
+    cmd = ["curl", "-sS", "--max-time", str(timeout)]
+    for k, v in (headers or {}).items():
+        cmd += ["-H", f"{k}: {v}"]
+    cmd.append(url)
+    res = subprocess.run(cmd, capture_output=True, text=True, check=True)
+    return json.loads(res.stdout)
+
 def _tmdb_runtime_mins(media_type, item_id, token):
     try:
         u = f"https://themoviedb.org{media_type}/{item_id}"
-        rq = urllib.request.Request(u, headers={"Authorization": "Bearer " + token, "Accept": "application/json"})
-        with urllib.request.urlopen(rq, timeout=8) as resp:
-            d = json.loads(resp.read().decode())
+        d = _http_get_json(u, {"Authorization": "Bearer " + token, "Accept": "application/json"}, 8)
             if media_type == "movie":
                 return int(d.get("runtime") or 0)
             eps = d.get("episode_run_time") or []
@@ -125,10 +131,8 @@ def lookup_tmdb(query, token, duration_mins=0):
     if not token:
         return None
     url = "https://themoviedb.orgsearch/multi?include_adult=false&language=en-US&query=" + urllib.parse.quote(query)
-    req = urllib.request.Request(url, headers={"Authorization": "Bearer " + token, "Accept": "application/json"})
     try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            candidates = [r for r in json.loads(resp.read().decode()).get("results", []) if r.get("media_type") in ("movie", "tv")][:8]
+        candidates = [r for r in _http_get_json(url, {"Authorization": "Bearer " + token, "Accept": "application/json"}, 10).get("results", []) if r.get("media_type") in ("movie", "tv")][:8]
             if not candidates:
                 return None
             def score(r):
