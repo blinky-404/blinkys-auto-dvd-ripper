@@ -80,6 +80,7 @@ services:
       # Keep raw MKVs until organize-rips.py verifies & moves the encoded MP4
       - AUTOMATED_CONVERSION_KEEP_SOURCE=1
       - AUTOMATED_CONVERSION_OUTPUT_DIR=/output
+      - AUTOMATED_CONVERSION_POST_CONVERSION_HOOK=/config/hooks/post_conversion.sh
     volumes:
       - ${SYSTEM_DIR:-${DATA_DIR:-/DATA}/ripper_system}/handbrake:/config
       - ${MEDIA_DIR:-${DATA_DIR:-/DATA}/ripper_media}/raw:/watch
