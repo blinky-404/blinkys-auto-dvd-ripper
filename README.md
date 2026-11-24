@@ -14,6 +14,16 @@ A hands-free, self-hosted **DVD & Blu-ray auto-ripping, encoding, quality-auditi
   * Optional **On-Demand Local Ollama (`moondream`)** or **Google Gemini** fallback that captures a `2x2` frame grid on unmatched discs (using **0 MB idle RAM** when not actively identifying a disc).
 * **2x2 Logs & `.TXT` Report Exporter:** View MakeMKV sector alerts, audio audits, HandBrake encodes, and organizer logs side by side or export custom `.TXT` diagnostic reports.
 
+
+## Screenshots
+
+### Web Control Center Dashboard
+<img width="1910" height="678" alt="Screenshot 2026-11-23 165249" src="https://github.com/user-attachments/assets/f426cb43-9f70-49ca-bdfe-a5e332784030" />
+### Universal Media Test Player & Logs
+<img width="1883" height="701" alt="Screenshot 2026-11-23 165343" src="https://github.com/user-attachments/assets/01b02c7d-32fc-4e33-9737-d5a4b7df1f01" />
+<img width="1918" height="726" alt="Screenshot 2026-11-23 165326" src="https://github.com/user-attachments/assets/f2481901-7a6a-4377-93fc-080e07b4a113" />
+
+
 ## Quick Start (One-Command Install)
 ```bash
 git clone https://github.com/blinky-404/blinkys-auto-dvd-ripper.git
