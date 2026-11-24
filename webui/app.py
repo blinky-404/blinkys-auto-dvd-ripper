@@ -176,7 +176,11 @@ def trigger_organize():
 
 @app.get("/api/config")
 def get_config():
-    return read_conf()
+    cfg = read_conf()
+    for secret_k in ("TMDB_API_KEY", "AI_API_KEY"):
+        if cfg.get(secret_k):
+            cfg[secret_k] = "********"
+    return cfg
 
 @app.post("/api/config")
 async def save_config(request: Request):

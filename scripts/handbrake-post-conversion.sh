@@ -1,10 +1,14 @@
 #!/bin/sh
+# jlesage/handbrake post_conversion.sh hook
+# Prefixes descriptive parent disc folder name onto finished MP4 and pauses HandBrake
+# while ripper-ui organizes the file and cleans up raw/<DISC_FOLDER>.
 CONVERSION_STATUS="$1"
 OUTPUT_FILE="$2"
 SOURCE_FILE="$3"
 
 if [ "$CONVERSION_STATUS" = "0" ] && [ -n "$OUTPUT_FILE" ] && [ -f "$OUTPUT_FILE" ]; then
-  PARENT_DIR=$(basename "$(dirname "$SOURCE_FILE")")
+  RAW_PARENT=$(basename "$(dirname "$SOURCE_FILE")")
+  PARENT_DIR=$(echo "$RAW_PARENT" | tr -cd '[:alnum:] ._-' | sed 's/^ *//;s/ *$//')
   LOWER_DIR=$(echo "$PARENT_DIR" | tr '[:upper:]' '[:lower:]' | tr -d ' _-')
   case "$LOWER_DIR" in
     ""|watch|dvd|dvdvideo|videots|bdmv|disc|disc1|disc2|disk|untitled|unknown|unidentified|volume|movie|video|main)
@@ -30,8 +34,10 @@ if [ "$CONVERSION_STATUS" = "0" ] && [ -n "$OUTPUT_FILE" ] && [ -f "$OUTPUT_FILE
   echo "[post_conversion] Encode complete: $OUTPUT_FILE — triggering organizer at $UI_URL..."
   wget -qO- --post-data="" "$UI_URL/api/run-organizer" >/dev/null 2>&1 || true
   sleep 3
-  while wget -qO- "$UI_URL/api/status" 2>/dev/null | grep -q '"busy": true'; do
+  TRIES=0
+  while wget -qO- "$UI_URL/api/status" 2>/dev/null | grep -q '"busy": true' && [ "$TRIES" -lt 300 ]; do
+    TRIES=$((TRIES + 1))
     sleep 2
   done
-  echo "[post_conversion] Organizer finished — resuming HandBrake queue."
+  echo "[post_conversion] Organizer step complete (polls=$TRIES) — resuming HandBrake queue."
 fi

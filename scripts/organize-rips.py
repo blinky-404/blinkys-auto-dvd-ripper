@@ -1,9 +1,19 @@
+"""Blinky's Auto DVD Ripper — Media Organizer & AI Identification Pipeline.
+
+Stages:
+  1. Quarantine & Audio Audit (short tracks < 45m -> short_videos/, missing audio -> no_audio/)
+  2. Disc Title Resolution (parent folder / raw/<DISC_FOLDER> lookup, skipping generic names)
+  3. TMDB Metadata Matching (strips edition/year tags before querying)
+  4. CPU-Gated AI Queue (parks unidentified rips in ai_hold/ while CPU >= 70%)
+  5. Progressive Ollama Vision + Dual-Model Consensus + TMDB Runtime Guard (+/- 6m)
+  6. Routing to organized_movies/ or short_videos/, saving _AI_preview.jpg & pruning raw/
+"""
 #!/usr/bin/env python3
 # ============================================================================
 # Blinky's Auto DVD Ripper v2.0 - Media Audit, Identification & Organizer
 # Pipeline: FFprobe Audio Audit -> Quality/Runtime Routing -> TMDB -> Local AI Vision
 # ============================================================================
-import os, re, sys, json, time, base64, shutil, subprocess, urllib.request, urllib.parse
+import os, fcntl, re, sys, json, time, base64, shutil, subprocess, urllib.request, urllib.parse
 from datetime import datetime
 
 SYSTEM_DIR = os.environ.get("SYSTEM_DIR", "/DATA/ripper_system")
@@ -390,4 +400,11 @@ def process_finished():
                 pass
 
 if __name__ == "__main__":
+    os.makedirs("/tmp", exist_ok=True)
+    _lock_fp = open("/tmp/organize-rips.lock", "w")
+    try:
+        fcntl.flock(_lock_fp, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        log("Organizer already running in another process; skipping duplicate trigger.")
+        sys.exit(0)
     process_finished()
