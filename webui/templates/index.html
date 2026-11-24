@@ -177,5 +177,99 @@ async function pollActionStatus() {
 }
 setInterval(pollActionStatus, 2000);
 pollActionStatus();
+
+let updateReady = false;
+let updateTimer = null;
+
+async function pollUpdateProgress() {
+  const banner = document.getElementById('upd-banner');
+  const pill = document.getElementById('upd-pill');
+  const logEl = document.getElementById('upd-log');
+  banner.classList.remove('hidden');
+  try {
+    const r = await (await fetch('/api/update-log')).json();
+    if (r.log) {
+      logEl.textContent = r.log;
+      logEl.scrollTop = logEl.scrollHeight;
+      if (r.log.includes('=== UPDATE COMPLETE ===')) {
+        pill.style.color = '#34d399';
+        pill.textContent = '● Updater: Complete! Reloading UI...';
+        clearInterval(updateTimer);
+        setTimeout(() => location.reload(), 2000);
+      } else if (r.log.includes('[ERROR]')) {
+        pill.style.color = '#f87171';
+        pill.textContent = '● Updater: Error (see log below)';
+        clearInterval(updateTimer);
+      }
+    }
+  } catch (e) {
+    pill.style.color = '#fbbf24';
+    pill.textContent = '● Updater: Restarting container... waiting for reconnect...';
+  }
+}
+
+async function handleUpdateClick() {
+  const btn = document.getElementById('btn-upd');
+  const st = document.getElementById('upd-status');
+  const banner = document.getElementById('upd-banner');
+  const pill = document.getElementById('upd-pill');
+  const logEl = document.getElementById('upd-log');
+
+  if (!updateReady) {
+    btn.disabled = true;
+    st.textContent = 'Checking GitHub...';
+    banner.classList.remove('hidden');
+    pill.style.color = '#38bdf8';
+    pill.textContent = '● Updater: Checking GitHub origin/main...';
+    logEl.textContent = 'Fetching latest commit info from GitHub...';
+    try {
+      const r = await (await fetch('/api/check-update')).json();
+      btn.disabled = false;
+      if (!r.ok) {
+        st.textContent = 'Check failed';
+        pill.style.color = '#f87171';
+        pill.textContent = '● Updater: Check failed';
+        logEl.textContent = r.error;
+        return;
+      }
+      if (r.up_to_date) {
+        st.textContent = 'Up to date (' + r.local + ')';
+        pill.style.color = '#34d399';
+        pill.textContent = '● Updater: Up to date (' + r.local + ')';
+        logEl.textContent = 'Local commit ' + r.local + ' matches origin/main (' + r.latest_msg + ').';
+        return;
+      }
+      updateReady = true;
+      btn.textContent = 'Install Update (' + r.remote + ')';
+      btn.style.background = '#d97706';
+      st.textContent = 'Update available: ' + r.remote;
+      pill.style.color = '#fbbf24';
+      pill.textContent = '● Updater: Update available (' + r.local + ' -> ' + r.remote + ')';
+      logEl.textContent = 'Latest commit: ' + r.latest_msg + '\nClick "Install Update (' + r.remote + ')" to pull and rebuild.';
+    } catch (err) {
+      btn.disabled = false;
+      pill.style.color = '#f87171';
+      pill.textContent = '● Updater: Request error';
+      logEl.textContent = String(err);
+    }
+  } else {
+    btn.disabled = true;
+    st.textContent = 'Updating...';
+    banner.classList.remove('hidden');
+    pill.style.color = '#fbbf24';
+    pill.textContent = '● Updater: Pulling & rebuilding stack...';
+    logEl.textContent = 'Starting update...';
+    const r = await (await fetch('/api/update-stack', {method: 'POST'})).json();
+    if (!r.ok) {
+      btn.disabled = false;
+      pill.style.color = '#f87171';
+      pill.textContent = '● Updater: Failed';
+      logEl.textContent = r.error;
+      return;
+    }
+    updateTimer = setInterval(pollUpdateProgress, 2000);
+  }
+}
+
 </script>
 </body></html>
