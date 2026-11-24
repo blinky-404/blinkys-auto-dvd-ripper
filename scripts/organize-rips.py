@@ -396,10 +396,10 @@ def process_finished():
         safe = re.sub(r'[\\/:*?"<>|]', '', matched).strip()
         is_low, reasons = False, []
         if CFG.get("ENABLE_QUALITY_SORT") == "true":
-        if info["height"] < int(CFG.get("MIN_VIDEO_HEIGHT", 300)):
-            is_low, reasons = True, reasons + [f"Height {info['height']}p"]
-        if 0 < info["bitrate_kbps"] < int(CFG.get("MIN_VIDEO_BITRATE_KBPS", 400)):
-            is_low, reasons = True, reasons + [f"Bitrate {info['bitrate_kbps']}kbps"]
+            if info["height"] < int(CFG.get("MIN_VIDEO_HEIGHT", 300)):
+                is_low, reasons = True, reasons + [f"Height {info['height']}p"]
+            if 0 < info["bitrate_kbps"] < int(CFG.get("MIN_VIDEO_BITRATE_KBPS", 400)):
+                is_low, reasons = True, reasons + [f"Bitrate {info['bitrate_kbps']}kbps"]
         base_bucket = "short_videos" if is_short else ("low_quality_quarantine" if is_low else "organized_movies")
         dest_dir = os.path.join(MEDIA_DIR, base_bucket, safe)
         os.makedirs(dest_dir, exist_ok=True)
