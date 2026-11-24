@@ -204,9 +204,9 @@ def clean_progress_spam(lines):
 
 def collect_logs():
     mk_raw = docker_sock("GET", "/containers/makemkv/logs?stdout=1&stderr=1&tail=250")
-    mk_filt = "\n".join([l for l in mk_raw.splitlines() if re.search(r"(error|fail|sector|hash|title|cell|skip|eject|complete|rip|autodiscripper|disc|backing|detect|finish|saved|start|operation)", l, re.I)])
+    mk_filt = "\n".join(clean_progress_spam([l for l in mk_raw.splitlines() if re.search(r"(error|fail|sector|hash|title|cell|skip|eject|complete|rip|autodiscripper|disc|backing|detect|finish|saved|start|operation)", l, re.I)]))
     hb_raw = docker_sock("GET", "/containers/handbrake/logs?stdout=1&stderr=1&tail=150")
-    hb_filt = "\n".join([l for l in hb_raw.splitlines() if re.search(r"(error|fail|encoding|complete|scan|title)", l, re.I)])
+    hb_filt = "\n".join(clean_progress_spam([l for l in hb_raw.splitlines() if re.search(r"(error|fail|encoding|complete|scan|title|fps, avg)", l, re.I)]))
     aud = open(os.path.join(LOG_DIR, "audio_audit.log")).read() if os.path.exists(os.path.join(LOG_DIR, "audio_audit.log")) else ""
     org = open(os.path.join(LOG_DIR, "organizer.log")).read() if os.path.exists(os.path.join(LOG_DIR, "organizer.log")) else ""
     return {"makemkv": mk_filt or "No MakeMKV warnings logged.", "handbrake": hb_filt or "No HandBrake warnings logged.", "audio": aud or "No audio audit entries yet.", "organizer": org or "No organizer logs yet."}
