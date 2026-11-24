@@ -1,3 +1,7 @@
+# ============================================================================
+# Blinky's Auto DVD Ripper v2.0 - Control Center Container Image
+# Includes FastAPI, FFmpeg (audio/frame inspection), curl, and Docker CLI
+# ============================================================================
 FROM python:3.11-slim
 RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg curl docker.io docker.io usbutils && rm -rf /var/lib/apt/lists/*
 WORKDIR /app

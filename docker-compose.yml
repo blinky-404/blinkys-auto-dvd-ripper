@@ -1,3 +1,7 @@
+# ============================================================================
+# Blinky's Auto DVD Ripper v2.0 - Multi-Container Docker Stack
+# Services: MakeMKV (:5800), HandBrake (:5801), FileBrowser (:8091), Web UI (:8090)
+# ============================================================================
 services:
   ripper-ui:
     build:
@@ -51,6 +55,7 @@ services:
       - TZ=${TZ:-America/Los_Angeles}
       - AUTO_DISC_RIPPER=1
       - AUTO_DISC_RIPPER_EJECT=1
+      # Skip short trailers/menus under 10 mins (600s); keep featurettes & movies
       - AUTO_DISC_RIPPER_MIN_TITLE_LENGTH=600
     volumes:
       - ${SYSTEM_DIR:-/DATA/ripper_system}/makemkv:/config
@@ -68,9 +73,11 @@ services:
       - USER_ID=${PUID:-1000}
       - GROUP_ID=${PGID:-1000}
       - TZ=${TZ:-America/Los_Angeles}
+      # Wait 30s of file inactivity so HandBrake never grabs an active MakeMKV rip
       - AUTOMATED_CONVERSION_SOURCE_STABLE_TIME=30
       - AUTOMATED_CONVERSION_PRESET=General/HQ 1080p30 Surround
       - AUTOMATED_CONVERSION_FORMAT=mp4
+      # Keep raw MKVs until organize-rips.py verifies & moves the encoded MP4
       - AUTOMATED_CONVERSION_KEEP_SOURCE=1
       - AUTOMATED_CONVERSION_OUTPUT_DIR=/output
     volumes:

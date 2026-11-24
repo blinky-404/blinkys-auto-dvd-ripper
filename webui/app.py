@@ -1,3 +1,6 @@
+# ============================================================================
+# Blinky's Auto DVD Ripper v2.0 - FastAPI Control Center & Telemetry Backend
+# ============================================================================
 import os, re, glob, json, subprocess
 from datetime import datetime
 from fastapi import FastAPI, Request, Query
@@ -117,6 +120,7 @@ def installed_ai_models():
     return sorted(set(found))
 
 @app.get("/api/status")
+# Live dashboard telemetry: optical drives, CPU load/temp, storage, and video counts
 def api_status():
     hw = detect_hardware()
     counts = {k: len([f for _, _, fs in os.walk(os.path.join(MEDIA_DIR, k)) for f in fs if not f.startswith(".")])
@@ -133,6 +137,7 @@ def api_status():
 ACTION_STATE = {"task": "System", "status": "idle", "detail": "All controls ready", "updated": ""}
 
 @app.get("/api/action_status")
+# Real-time status readout for top dashboard buttons (Restart & Run Organizer)
 def api_action_status():
     return ACTION_STATE
 

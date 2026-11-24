@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# ============================================================================
+# Blinky's Auto DVD Ripper v2.0 - Media Audit, Identification & Organizer
+# Pipeline: FFprobe Audio Audit -> Quality/Runtime Routing -> TMDB -> Local AI Vision
+# ============================================================================
 import os, re, sys, json, time, base64, shutil, subprocess, urllib.request, urllib.parse
 from datetime import datetime
 
@@ -46,6 +50,7 @@ def log(msg):
         f.writelines(lines[-MAX_LINES:])
 
 
+# Inspect video resolution, runtime, and audio codecs using ffprobe
 def probe_media(filepath):
     cmd = ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", "-show_streams", filepath]
     res = subprocess.run(cmd, capture_output=True, text=True)
@@ -92,6 +97,7 @@ def clean_disc_name(filename):
     base = re.sub(r'[-_][a-zA-Z0-9]{6}$', '', base)
     return re.sub(r'[._-]+', ' ', base).strip()
 
+# Query The Movie Database (TMDB) API for canonical title & release year
 def lookup_tmdb(query, token):
     if not token:
         return None
@@ -149,6 +155,7 @@ def query_database(query):
         return lookup_musicbrainz(query)
     return None
 
+# Fallback: capture a 2x2 frame grid and query Local Ollama (moondream) or Cloud AI
 def identify_with_ai(grid_jpg):
     provider = CFG.get("AI_PROVIDER", "local_ollama")
     prompt = "Identify the movie, TV show, or concert shown in these video frames. Reply ONLY with the exact title and release year in the format: Title (Year). If unrecognizable, reply UNKNOWN."

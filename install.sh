@@ -1,4 +1,7 @@
 #!/bin/bash
+# ============================================================================
+# Blinky's Auto DVD Ripper v2.0 - Interactive One-Command Host Installer
+# ============================================================================
 set -e
 echo "=== Blinky's Auto DVD Ripper v2.0 Installer ==="
 DEFAULT_BASE=$([ -d "/DATA" ] && echo "/DATA" || echo "/opt/blinky-ripper")
