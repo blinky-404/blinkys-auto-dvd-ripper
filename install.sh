@@ -46,5 +46,9 @@ ENV
 sudo cp scripts/udev-disc-trigger.sh /usr/local/bin/blinky-udev-trigger.sh && sudo chmod +x /usr/local/bin/blinky-udev-trigger.sh
 echo 'SUBSYSTEM=="block", KERNEL=="sr[0-9]*", ACTION=="add", RUN+="/usr/bin/systemd-run --no-block /usr/local/bin/blinky-udev-trigger.sh /dev/%k"' | sudo tee /etc/udev/rules.d/99-blinky-dvd-ripper.rules >/dev/null
 sudo udevadm control --reload-rules
-sudo docker compose up -d --build
+sudo mkdir -p "${SYSTEM_DIR}/handbrake/hooks"
+cp -f scripts/handbrake-post-conversion.sh "${SYSTEM_DIR}/handbrake/hooks/post_conversion.sh"
+chmod +x "${SYSTEM_DIR}/handbrake/hooks/post_conversion.sh"
+
+docker compose up -d --build
 echo "Done! Open http://$(hostname -I | awk '{print $1}'):$UI_PORT"
