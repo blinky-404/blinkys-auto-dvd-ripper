@@ -194,6 +194,13 @@ async def install_local_ai(request: Request):
     subprocess.Popen(["bash", "-c", cmd])
     return {"ok": True, "message": f"Pulling {model} in background; container will stop automatically once ready."}
 
+def clean_progress_spam(lines):
+    kept = [l for l in lines if "Current progress -" not in l and ("Encoding " not in l or " % (" not in l)]
+    prog = [l for l in lines if "Current progress -" in l or ("Encoding " in l and " % (" in l)]
+    if prog:
+        kept.append("--- Latest Progress: " + prog[-1].strip() + " ---")
+    return kept[-80:]
+
 def collect_logs():
     mk_raw = docker_sock("GET", "/containers/makemkv/logs?stdout=1&stderr=1&tail=250")
     mk_filt = "\n".join([l for l in mk_raw.splitlines() if re.search(r"(error|fail|sector|hash|title|cell|skip|eject|complete|rip|autodiscripper|disc|backing|detect|finish|saved|start|operation)", l, re.I)])
