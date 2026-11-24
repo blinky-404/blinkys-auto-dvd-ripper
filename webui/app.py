@@ -107,8 +107,12 @@ def sys_metrics():
     cpu_pct = min(100.0, round((load1 / cores) * 100, 1))
     return {"cpu_pct": cpu_pct, "disk_pct": disk_pct, "free_gb": free_gb, "total_gb": total_gb}
 
-def docker_sock(method, path, timeout=5):
-    res = subprocess.run(["curl", "-s", "-X", method, "--unix-socket", "/var/run/docker.sock", "http://localhost" + path], capture_output=True, text=True, errors="replace", timeout=timeout)
+def docker_sock(method, path, timeout=5, body=None):
+    cmd = ["curl", "-s", "-X", method, "--unix-socket", "/var/run/docker.sock"]
+    if body is not None:
+        cmd += ["-H", "Content-Type: application/json", "-d", body]
+    cmd.append("http://localhost" + path)
+    res = subprocess.run(cmd, capture_output=True, text=True, errors="replace", timeout=timeout)
     return res.stdout or ""
 
 def installed_ai_models():
@@ -319,7 +323,9 @@ def update_stack():
         with open(log_path, "w") as lf:
             lf.write("=== Starting Stack Update ===\n[1/4] Pulling latest commits from origin/main...\n")
         subprocess.run(["git", "-C", "/repo", "config", "--global", "--add", "safe.directory", "/repo"], check=False)
+        st = os.stat("/repo")
         pull = subprocess.run(["git", "-C", "/repo", "pull", "origin", "main"], check=True, timeout=30, capture_output=True, text=True)
+        subprocess.run(["chown", "-R", f"{st.st_uid}:{st.st_gid}", "/repo"], check=False)
         with open(log_path, "a") as lf:
             lf.write(pull.stdout + pull.stderr + "\n[2/4] Updating ai_hold folder & HandBrake post_conversion.sh hook...\n")
         os.makedirs(os.path.join(MEDIA_DIR, "ai_hold"), exist_ok=True)
@@ -350,7 +356,7 @@ def update_stack():
                 ]
             }
         })
-        created = json.loads(docker_sock("POST", "/containers/create?name=ripper-updater", create_payload))
+        created = json.loads(docker_sock("POST", "/containers/create?name=ripper-updater", timeout=15, body=create_payload))
         cid = created.get("Id")
         if not cid:
             raise RuntimeError(f"Failed to create updater container: {created}")
