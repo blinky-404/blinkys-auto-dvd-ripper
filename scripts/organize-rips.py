@@ -297,7 +297,7 @@ def process_finished():
         is_short = (CFG.get("ENABLE_RUNTIME_CHECK") == "true" and info["duration_mins"] < min_mins)
         mode = CFG.get("IDENTIFY_MODE", "db_then_ai")
         raw_title = resolve_source_title(fpath, fname)
-        query = re.sub(r"(\s*\(Unmatched\)|_SHORT_\d+m|\b(special|director.?s|extended|unrated|widescreen|fullscreen|collector.?s|anniversary|remastered|deluxe|theatrical|blu-?ray|dvd)\s*(edition|cut|version)?\b|\bt\d+\b|\b[A-Z]\d+\b)", "", clean_disc_name(raw_title), flags=re.I).strip()
+        query = re.sub(r"(\s*\(\d{4}\)|\s*\(Unmatched\)|_SHORT_\d+m|\b(special|director.?s|extended|unrated|widescreen|fullscreen|collector.?s|anniversary|remastered|deluxe|theatrical|blu-?ray|dvd)\s*(edition|cut|version)?\b|\bt\d+\b|\b[A-Z]\d+\b)", "", clean_disc_name(raw_title), flags=re.I).strip()
         if len(query) <= 3 or query.lower() in ("unidentified", "unknown", "untitled", "disc", "dvd", "movie", "video", "main"): query = ""
         matched = query_database(query) if mode in ("db_only", "db_then_ai") and query.upper() not in ("DVD VIDEO", "DISC 1", "DISC 2", "VIDEO TS", "MOVIE") else None
         tmp_snap, has_snap = f"/tmp/grid_{int(time.time()*1000)}.jpg", False
