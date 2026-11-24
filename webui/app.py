@@ -384,7 +384,7 @@ def _finished_watcher_loop():
                     if fn.startswith(".") or not fn.lower().endswith((".mp4", ".mkv")):
                         continue
                     fp = os.path.join(fin_dir, fn)
-                    if os.path.isfile(fp) and (now - os.path.getmtime(fp)) > 15:
+                    if os.path.isfile(fp) and (now - os.path.getmtime(fp)) > 25:
                         settled_mp4 = True
                         break
             if has_trig or settled_mp4:
