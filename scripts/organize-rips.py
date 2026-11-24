@@ -120,10 +120,10 @@ def _tmdb_runtime_mins(media_type, item_id, token):
     try:
         u = f"https://themoviedb.org{media_type}/{item_id}"
         d = _http_get_json(u, {"Authorization": "Bearer " + token, "Accept": "application/json"}, 8)
-            if media_type == "movie":
-                return int(d.get("runtime") or 0)
-            eps = d.get("episode_run_time") or []
-            return int(eps[0]) if eps else 0
+        if media_type == "movie":
+            return int(d.get("runtime") or 0)
+        eps = d.get("episode_run_time") or []
+        return int(eps) if eps else 0
     except Exception:
         return 0
 
