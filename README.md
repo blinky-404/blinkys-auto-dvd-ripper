@@ -9,9 +9,12 @@ A hands-free, self-hosted **DVD & Blu-ray auto-ripping, encoding, quality-auditi
   * Quarantines 0-audio files to `no_audio/` so silent rips never break encodes.
   * Auto-converts **DTS / PCM** tracks to universal **AAC** while saving untouched `.mkv` audio backups.
   * Routes low-resolution or low-bitrate rips to `low_quality_quarantine/`.
-* **Multi-Database + On-Demand AI Vision Identification:**
+* **Per-Encode Queue Sync & Smart Folder Cleanup:**
+  * HandBrake's `post_conversion.sh` hook automatically prefixes non-generic disc folder names, pauses HandBrake between encodes while the Organizer files the movie, deletes finished `.mkv` sources, and prunes empty `raw/` directories.
+* **Multi-Database + CPU-Gated Dual-Model AI Vision (`0 MB Idle RAM`):**
   * Supports **TMDB** (Movies/TV), **TVmaze** (TV Series — no API key required), and **MusicBrainz** (Concerts — no API key required).
-  * Optional **On-Demand Local Ollama (`moondream`)** or **Google Gemini** fallback that captures a `2x2` frame grid on unmatched discs (using **0 MB idle RAM** when not actively identifying a disc).
+  * Defers AI scans into `ai_hold/` whenever host CPU is busy (`>= 70%`) so encodes never stall.
+  * Runs progressive snapshot grids through your chosen primary local Ollama model (`gemma3:4b`, `qwen2.5vl:3b`, or `moondream`), cross-checks runtime against TMDB (`±6m`), runs a second-opinion audit model if runtime is not exact, and saves `<Title>_AI_preview.jpg` contact sheets for easy review.
 * **2x2 Logs & `.TXT` Report Exporter:** View MakeMKV sector alerts, audio audits, HandBrake encodes, and organizer logs side by side or export custom `.TXT` diagnostic reports.
 
 
