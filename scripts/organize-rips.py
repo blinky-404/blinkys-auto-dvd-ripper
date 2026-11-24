@@ -118,7 +118,7 @@ def _http_get_json(url, headers=None, timeout=10):
 
 def _tmdb_runtime_mins(media_type, item_id, token):
     try:
-        u = "https://api.themoviedb.org/3/" + str(media_type) + "/" + str(item_id)
+        u = "/".join(["https:", "", "api.themoviedb.org", "3", str(media_type), str(item_id)])
         d = _http_get_json(u, {"Authorization": "Bearer " + token, "Accept": "application/json"}, 8)
         if media_type == "movie":
             return int(d.get("runtime") or 0)
@@ -130,9 +130,11 @@ def _tmdb_runtime_mins(media_type, item_id, token):
 def lookup_tmdb(query, token, duration_mins=0):
     if not token:
         return None
+    is_tv_query = bool(re.search(r'(?i)\b(s\d{1,2}e\d{1,2}|season\s*\d+|disc\s*\d+)\b', query))
     url = "/".join(["https:", "", "api.themoviedb.org", "3", "search", "multi"]) + "?include_adult=false&language=en-US&query=" + urllib.parse.quote(query)
     try:
-        candidates = [r for r in _http_get_json(url, {"Authorization": "Bearer " + token, "Accept": "application/json"}, 10).get("results", []) if r.get("media_type") in ("movie", "tv")][:8]
+        raw_res = _http_get_json(url, {"Authorization": "Bearer " + token, "Accept": "application/json"}, 10).get("results", [])
+        candidates = [r for r in raw_res if r.get("media_type") in ("movie", "tv")][:10]
         if not candidates:
             return None
         def score(r):
@@ -143,12 +145,14 @@ def lookup_tmdb(query, token, duration_mins=0):
                 s -= 50.0
             if int(r.get("vote_count") or 0) >= 20:
                 s += 40.0
-            if r.get("media_type") == "movie" and duration_mins >= 65:
-                s += 25.0
+            if r.get("media_type") == "movie" and duration_mins >= 65 and not is_tv_query:
+                s += 80.0
             return s
         candidates.sort(key=score, reverse=True)
         for r in candidates:
             mtype = r.get("media_type")
+            if mtype == "tv" and duration_mins >= 65 and not is_tv_query:
+                continue
             mid = r.get("id")
             title = r.get("title") or r.get("name")
             date = r.get("release_date") or r.get("first_air_date") or ""
