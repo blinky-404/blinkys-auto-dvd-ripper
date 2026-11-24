@@ -124,7 +124,7 @@ def installed_ai_models():
 def api_status():
     hw = detect_hardware()
     counts = {k: len([f for _, _, fs in os.walk(os.path.join(MEDIA_DIR, k)) for f in fs if not f.startswith(".")])
-              for k in ["raw", "finished", "organized_movies", "low_quality_quarantine", "raw_audio_backups", "short_videos", "no_audio"]}
+              for k in ["raw", "finished", "organized_movies", "low_quality_quarantine", "raw_audio_backups", "short_videos", "ai_hold", "no_audio"]}
     hb_log = docker_sock("GET", "/containers/handbrake/logs?stdout=1&stderr=1&tail=30")
     pct_match = re.findall(r"(\d+\.\d+)\s*%", hb_log)
     hb_progress = float(pct_match[-1]) if pct_match else 0.0
@@ -242,7 +242,7 @@ def export_logs(sections: str = "makemkv,audio,handbrake,organizer", save_server
 @app.get("/api/media/list")
 def list_media():
     items = []
-    for folder in ["raw", "finished", "organized_movies", "low_quality_quarantine", "raw_audio_backups", "short_videos", "no_audio"]:
+    for folder in ["raw", "finished", "organized_movies", "low_quality_quarantine", "raw_audio_backups", "short_videos", "ai_hold", "no_audio"]:
         base = os.path.join(MEDIA_DIR, folder)
         for r, _, fns in os.walk(base):
             for fn in sorted(fns):
@@ -261,7 +261,7 @@ def stream_media(path: str = Query(...)):
     proc = subprocess.Popen(["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", full, "-c:v", "libx264", "-preset", "ultrafast", "-crf", "26", "-c:a", "aac", "-b:a", "128k", "-movflags", "frag_keyframe+empty_moov", "-f", "mp4", "pipe:1"], stdout=subprocess.PIPE)
     return StreamingResponse(iter(lambda: proc.stdout.read(65536), b""), media_type="video/mp4")
     items = []
-    for folder in ["raw", "finished", "organized_movies", "low_quality_quarantine", "raw_audio_backups", "short_videos", "no_audio"]:
+    for folder in ["raw", "finished", "organized_movies", "low_quality_quarantine", "raw_audio_backups", "short_videos", "ai_hold", "no_audio"]:
         base = os.path.join(MEDIA_DIR, folder)
         for r, _, fns in os.walk(base):
             for fn in sorted(fns):

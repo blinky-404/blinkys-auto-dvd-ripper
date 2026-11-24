@@ -156,6 +156,19 @@ def query_database(query):
     return None
 
 # Fallback: capture a 2x2 frame grid and query Local Ollama (moondream) or Cloud AI
+def current_cpu_pct():
+    try:
+        with open("/proc/stat") as f:
+            a = [float(x) for x in f.readline().split()[1:8]]
+        time.sleep(0.3)
+        with open("/proc/stat") as f:
+            b = [float(x) for x in f.readline().split()[1:8]]
+        idle = (b + b) - (a + a)
+        tot = sum(b) - sum(a)
+        return round((1.0 - idle / tot) * 100, 1) if tot > 0 else 0.0
+    except Exception:
+        return 0.0
+
 def identify_with_ai(video_path, duration_secs, out_dir):
     provider = CFG.get("AI_PROVIDER", "none")
     if provider == "none":
@@ -238,7 +251,9 @@ def identify_with_ai(video_path, duration_secs, out_dir):
 
 def process_finished():
     fin_dir = os.path.join(MEDIA_DIR, "finished")
-    files = [os.path.join(r, fn) for r, _, fns in os.walk(fin_dir) for fn in fns if fn.lower().endswith((".mp4", ".mkv", ".m4v")) and not fn.startswith(".")]
+    hold_dir = os.path.join(MEDIA_DIR, "ai_hold")
+    os.makedirs(hold_dir, exist_ok=True)
+    files = [os.path.join(r, fn) for d in (fin_dir, hold_dir) for r, _, fns in os.walk(d) for fn in fns if fn.lower().endswith((".mp4", ".mkv", ".m4v")) and not fn.startswith(".")]
     if not files:
         log("Organizer check complete: No new files in finished/.")
         return
@@ -256,11 +271,20 @@ def process_finished():
             continue
         min_mins = float(CFG.get("MIN_RUNTIME_MINS", 45))
         is_short = (CFG.get("ENABLE_RUNTIME_CHECK") == "true" and info["duration_mins"] < min_mins)
-        mode, query = CFG.get("IDENTIFY_MODE", "db_then_ai"), re.sub(r"(\s*\(Unmatched\)|_SHORT_\d+m|\b(special|director.?s|extended|unrated|widescreen|fullscreen|collector.?s|anniversary|remastered|deluxe|theatrical|blu-?ray|dvd)\s*(edition|cut|version)?\b|\bt\d+\b|\b[A-Z]\d+\b)", "", clean_disc_name(os.path.basename(os.path.dirname(fpath)) if os.path.basename(os.path.dirname(fpath)) != "finished" else fname), flags=re.I).strip()
+        mode, query = CFG.get("IDENTIFY_MODE", "db_then_ai"), re.sub(r"(\s*\(Unmatched\)|_SHORT_\d+m|\b(special|director.?s|extended|unrated|widescreen|fullscreen|collector.?s|anniversary|remastered|deluxe|theatrical|blu-?ray|dvd)\s*(edition|cut|version)?\b|\bt\d+\b|\b[A-Z]\d+\b)", "", clean_disc_name(os.path.basename(os.path.dirname(fpath)) if os.path.basename(os.path.dirname(fpath)) not in ("finished", "ai_hold") else fname), flags=re.I).strip()
         if len(query) <= 3 or query.lower() in ("unidentified", "unknown", "untitled", "disc", "dvd", "movie", "video", "main"): query = ""
         matched = query_database(query) if mode in ("db_only", "db_then_ai") and query.upper() not in ("DVD VIDEO", "DISC 1", "DISC 2", "VIDEO TS", "MOVIE") else None
         tmp_snap, has_snap = f"/tmp/grid_{int(time.time()*1000)}.jpg", False
         if not matched and mode in ("ai_only", "db_then_ai"):
+            cpu_now = current_cpu_pct()
+            if cpu_now >= 70.0:
+                hold_dir = os.path.join(MEDIA_DIR, "ai_hold")
+                os.makedirs(hold_dir, exist_ok=True)
+                dest_hold = os.path.join(hold_dir, fname)
+                if os.path.abspath(fpath) != os.path.abspath(dest_hold):
+                    shutil.move(fpath, dest_hold)
+                log(f"   -> CPU load at {cpu_now}% (>= 70%); parked in ai_hold/ until CPU is below 70%.")
+                continue
             guess = identify_with_ai(fpath, info["duration_secs"], "/tmp/ai_scans")
             if os.path.exists("/tmp/ai_scans/preview_grid.jpg"):
                 shutil.move("/tmp/ai_scans/preview_grid.jpg", tmp_snap)
