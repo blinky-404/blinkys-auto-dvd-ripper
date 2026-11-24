@@ -142,6 +142,12 @@ def lookup_tmdb(query, token, duration_mins=0):
             return None
         def score(r):
             s = float(r.get("popularity") or 0)
+            cand_title = (r.get("title") or r.get("name") or "").strip().lower()
+            q_norm = query.strip().lower()
+            if cand_title == q_norm:
+                s += 250.0
+            elif cand_title.startswith(q_norm):
+                s += 80.0
             if r.get("original_language") == "en":
                 s += 100.0
             else:
