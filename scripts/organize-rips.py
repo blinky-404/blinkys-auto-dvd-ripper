@@ -156,47 +156,81 @@ def query_database(query):
     return None
 
 # Fallback: capture a 2x2 frame grid and query Local Ollama (moondream) or Cloud AI
-def identify_with_ai(grid_jpg):
-    provider = CFG.get("AI_PROVIDER", "local_ollama")
-    prompt = "Identify the movie, TV show, or concert shown in these video frames. Reply ONLY with the exact title and release year in the format: Title (Year). If unrecognizable, reply UNKNOWN."
-    with open(grid_jpg, "rb") as f:
-        b64_img = base64.b64encode(f.read()).decode()
-
-    if provider == "local_ollama":
-        model = CFG.get("LOCAL_AI_MODEL", "moondream")
-        obin = "/DATA/ripper_system/ollama/bin/ollama"
-        env = dict(os.environ, OLLAMA_MODELS="/DATA/ripper_system/ollama/models", OLLAMA_HOST="127.0.0.1:11434")
-        srv = subprocess.Popen([obin, "serve"], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) if os.path.exists(obin) else None
+def identify_with_ai(video_path, duration_secs, out_dir):
+    provider = CFG.get("AI_PROVIDER", "none")
+    if provider == "none":
+        return None
+    os.makedirs(out_dir, exist_ok=True)
+    # Progressive snapshot batches (up to 30 frames total: opening credits -> mid-film -> end credits)
+    batches = [
+        [0.02, 0.05, 0.10, 0.18],
+        [0.01, 0.03, 0.07, 0.12, 0.25, 0.35],
+        [0.42, 0.50, 0.58, 0.66, 0.74, 0.82],
+        [0.88, 0.91, 0.93, 0.95, 0.97, 0.99],
+        [0.015, 0.04, 0.15, 0.30, 0.70, 0.94],
+    ]
+    prompt = "Identify the exact movie, TV show, or concert title shown in these video frames (check any title cards, credits, actors, or logos). Reply ONLY with the clean title (and year if known). If completely unrecognizable, reply UNKNOWN."
+    obin = "/DATA/ripper_system/ollama/bin/ollama"
+    model = CFG.get("LOCAL_AI_MODEL", "moondream")
+    env = dict(os.environ, OLLAMA_MODELS="/DATA/ripper_system/ollama/models", OLLAMA_HOST="127.0.0.1:11434")
+    srv = None
+    if provider == "local_ollama" and os.path.exists(obin):
+        srv = subprocess.Popen([obin, "serve"], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         for _ in range(15):
             try:
                 urllib.request.urlopen("http://127.0.0", timeout=1)
                 break
             except Exception:
                 time.sleep(0.5)
-        try:
-            r = subprocess.run([obin, "run", model, f"{prompt}\n{grid_path}"], env=env, capture_output=True, text=True, timeout=120)
-            ans = re.sub(r'\x1b\[[0-9;?]*[a-zA-Z]', '', r.stdout or "").strip().splitlines()
-            ans = ans[-1].strip() if ans else ""
-            if ans and "UNKNOWN" not in ans.upper():
-                return re.sub(r'[\\/:*?"<>|]', '', ans).strip()
-            if r.stderr:
-                log(f"   -> Local Ollama Vision note: {r.stderr.strip().splitlines()[-1][:100]}")
-        except Exception as ex:
-            log(f"   -> Local Ollama Vision error: {ex}")
-        finally:
-            if srv: srv.terminate(); srv.wait(timeout=5)
-    elif provider == "gemini" and CFG.get("AI_API_KEY"):
-        url = "https://://googleapis.com" + CFG["AI_API_KEY"]
-        payload = json.dumps({"contents": [{"parts": [{"text": prompt}, {"inline_data": {"mime_type": "image/jpeg", "data": b64_img}}]}]}).encode()
-        req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
-        try:
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                data = json.loads(resp.read().decode())
-                ans = data["candidates"]["content"]["parts"]["text"].strip()
-                if ans and "UNKNOWN" not in ans.upper():
-                    return re.sub(r'[\\/:*?"<>|]', '', ans).strip()
-        except Exception as e:
-            log(f"   -> Gemini Vision error: {e}")
+    try:
+        total_snaps = 0
+        for b_idx, pcts in enumerate(batches):
+            frames = []
+            for idx, pct in enumerate(pcts):
+                ts = max(2, int(duration_secs * pct))
+                f_out = os.path.join(out_dir, f"_frame_{b_idx}_{idx}.jpg")
+                subprocess.run(["ffmpeg", "-y", "-ss", str(ts), "-i", video_path, "-vframes", "1", "-q:v", "4", f_out], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                if os.path.exists(f_out):
+                    frames.append(f_out)
+            if not frames:
+                continue
+            total_snaps += len(frames)
+            cols = 2 if len(frames) <= 4 else 3
+            rows = (len(frames) + cols - 1) // cols
+            grid_path = os.path.join(out_dir, "preview_grid.jpg")
+            subprocess.run(["ffmpeg", "-y", "-pattern_type", "glob", "-i", os.path.join(out_dir, f"_frame_{b_idx}_*.jpg"), "-filter_complex", f"scale=480:-1,tile={cols}x{rows}", grid_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            for f in frames:
+                try: os.remove(f)
+                except OSError: pass
+            if not os.path.exists(grid_path):
+                continue
+
+            ans = ""
+            if provider == "local_ollama":
+                r = subprocess.run([obin, "run", model, f"{prompt}\n{grid_path}"], env=env, capture_output=True, text=True, timeout=120)
+                lines_out = re.sub(r'\x1b\[[0-9;?]*[a-zA-Z]', '', r.stdout or "").strip().splitlines()
+                ans = lines_out[-1].strip() if lines_out else ""
+            elif provider == "gemini" and CFG.get("GEMINI_API_KEY"):
+                with open(grid_path, "rb") as gf:
+                    b64_img = base64.b64encode(gf.read()).decode()
+                url = f"https://googleapis.com{CFG['GEMINI_API_KEY']}"
+                body = json.dumps({"contents": [{"parts": [{"text": prompt}, {"inline_data": {"mime_type": "image/jpeg", "data": b64_img}}]}]}).encode()
+                req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"})
+                with urllib.request.urlopen(req, timeout=30) as resp:
+                    ans = json.loads(resp.read().decode())["candidates"]["content"]["parts"]["text"].strip()
+
+            clean_ans = re.sub(r'[\\/:*?"<>|]', '', ans).strip()
+            if clean_ans and not any(bad in clean_ans.upper() for bad in ("UNKNOWN", "UNIDENTIFIED", "NOT SURE", "CANNOT IDENTIFY", "SORRY")):
+                log(f"   -> AI Vision matched '{clean_ans}' after {total_snaps} snapshots!")
+                os.remove(grid_path)
+                return clean_ans
+            log(f"   -> AI Vision pass {b_idx+1}/{len(batches)} ({total_snaps}/30 snapshots) inconclusive, scanning deeper...")
+    except Exception as ex:
+        log(f"   -> AI Vision error: {ex}")
+    finally:
+        if srv:
+            srv.terminate()
+            srv.wait(timeout=5)
     return None
 
 def process_finished():
