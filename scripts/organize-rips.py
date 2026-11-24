@@ -118,12 +118,12 @@ def _http_get_json(url, headers=None, timeout=10):
 
 def _tmdb_runtime_mins(media_type, item_id, token):
     try:
-        u = f"https://themoviedb.org{media_type}/{item_id}"
+        u = "https://themoviedb.org" + str(media_type) + "/" + str(item_id)
         d = _http_get_json(u, {"Authorization": "Bearer " + token, "Accept": "application/json"}, 8)
         if media_type == "movie":
             return int(d.get("runtime") or 0)
         eps = d.get("episode_run_time") or []
-        return int(eps) if eps else 0
+        return int(eps[0]) if eps else 0
     except Exception:
         return 0
 
@@ -133,32 +133,32 @@ def lookup_tmdb(query, token, duration_mins=0):
     url = "https://themoviedb.orgsearch/multi?include_adult=false&language=en-US&query=" + urllib.parse.quote(query)
     try:
         candidates = [r for r in _http_get_json(url, {"Authorization": "Bearer " + token, "Accept": "application/json"}, 10).get("results", []) if r.get("media_type") in ("movie", "tv")][:8]
-            if not candidates:
-                return None
-            def score(r):
-                s = float(r.get("popularity") or 0)
-                if r.get("original_language") == "en":
-                    s += 100.0
-                else:
-                    s -= 50.0
-                if int(r.get("vote_count") or 0) >= 20:
-                    s += 40.0
-                if r.get("media_type") == "movie" and duration_mins >= 65:
-                    s += 25.0
-                return s
-            candidates.sort(key=score, reverse=True)
-            for r in candidates:
-                mtype = r.get("media_type")
-                mid = r.get("id")
-                title = r.get("title") or r.get("name")
-                date = r.get("release_date") or r.get("first_air_date") or ""
-                yr = date[:4] if len(date) >= 4 else ""
-                if duration_mins > 0 and mid:
-                    rt = _tmdb_runtime_mins(mtype, mid, token)
-                    if rt > 0 and abs(rt - duration_mins) > 8:
-                        log(f"   -> TMDB candidate rejected by runtime guard: {title} ({yr}) is {rt}m vs disc {duration_mins}m")
-                        continue
-                return f"{title} ({yr})" if yr else title
+        if not candidates:
+            return None
+        def score(r):
+            s = float(r.get("popularity") or 0)
+            if r.get("original_language") == "en":
+                s += 100.0
+            else:
+                s -= 50.0
+            if int(r.get("vote_count") or 0) >= 20:
+                s += 40.0
+            if r.get("media_type") == "movie" and duration_mins >= 65:
+                s += 25.0
+            return s
+        candidates.sort(key=score, reverse=True)
+        for r in candidates:
+            mtype = r.get("media_type")
+            mid = r.get("id")
+            title = r.get("title") or r.get("name")
+            date = r.get("release_date") or r.get("first_air_date") or ""
+            yr = date[:4] if len(date) >= 4 else ""
+            if duration_mins > 0 and mid:
+                rt = _tmdb_runtime_mins(mtype, mid, token)
+                if rt > 0 and abs(rt - duration_mins) > 8:
+                    log(f"   -> TMDB candidate rejected by runtime guard: {title} ({yr}) is {rt}m vs disc {duration_mins}m")
+                    continue
+            return f"{title} ({yr})" if yr else title
     except Exception as e:
         log(f"   -> TMDB lookup error: {e}")
     return None
@@ -397,6 +397,8 @@ def process_finished():
             matched = f"{query or 'Unknown Disc'} (Unmatched)"
             if not has_snap and CFG.get("ENABLE_UNMATCHED_SNAPSHOTS") == "true":
                 has_snap = create_snapshot_grid(fpath, tmp_snap, info["duration_secs"])
+    if not matched:
+        continue
     safe = re.sub(r'[\\/:*?"<>|]', '', matched).strip()
     is_low, reasons = False, []
     if CFG.get("ENABLE_QUALITY_SORT") == "true":
