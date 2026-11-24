@@ -219,7 +219,7 @@ def process_finished():
             continue
         min_mins = float(CFG.get("MIN_RUNTIME_MINS", 45))
         is_short = (CFG.get("ENABLE_RUNTIME_CHECK") == "true" and info["duration_mins"] < min_mins)
-        mode, query = CFG.get("IDENTIFY_MODE", "db_then_ai"), re.sub(r"(\s*\(Unmatched\)|_SHORT_\d+m|\b(special|director.?s|extended|unrated|widescreen|fullscreen|collector.?s|anniversary|remastered|deluxe|theatrical|blu-?ray|dvd)\s*(edition|cut|version)?\b|\bt\d+\b|\b[A-Z]\d+\b)", "", clean_disc_name(fname), flags=re.I).strip()
+        mode, query = CFG.get("IDENTIFY_MODE", "db_then_ai"), re.sub(r"(\s*\(Unmatched\)|_SHORT_\d+m|\b(special|director.?s|extended|unrated|widescreen|fullscreen|collector.?s|anniversary|remastered|deluxe|theatrical|blu-?ray|dvd)\s*(edition|cut|version)?\b|\bt\d+\b|\b[A-Z]\d+\b)", "", clean_disc_name(os.path.basename(os.path.dirname(fpath)) if os.path.basename(os.path.dirname(fpath)) != "finished" else fname), flags=re.I).strip()
         if len(query) <= 3 or query.lower() in ("unidentified", "unknown", "untitled", "disc", "dvd", "movie", "video", "main"): query = ""
         matched = query_database(query) if mode in ("db_only", "db_then_ai") and query.upper() not in ("DVD VIDEO", "DISC 1", "DISC 2", "VIDEO TS", "MOVIE") else None
         tmp_snap, has_snap = f"/tmp/grid_{int(time.time()*1000)}.jpg", False
