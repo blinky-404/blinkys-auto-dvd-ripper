@@ -332,24 +332,24 @@ def process_finished():
     fin_dir = os.path.join(MEDIA_DIR, "finished")
     hold_dir = os.path.join(MEDIA_DIR, "ai_hold")
     os.makedirs(hold_dir, exist_ok=True)
-    files = [os.path.join(r, fn) for d in (fin_dir, hold_dir) for r, _, fns in os.walk(d) for fn in fns if fn.lower().endswith((".mp4", ".mkv", ".m4v")) and not fn.startswith(".")]
+    files = [os.path.join(r, fn) for d in (fin_dir, hold_dir) for r, _, fns in os.walk(d) if "/." not in r for fn in fns if fn.lower().endswith((".mp4", ".mkv", ".m4v")) and not fn.startswith(".")]
     if not files:
         log("Organizer check complete: No new files in finished/.")
         return
     for fpath in sorted(files):
+        if time.time() - os.path.getmtime(fpath) < 20:
+            continue
         fname = os.path.basename(fpath)
         log(f"Processing: {fname}")
         info = probe_media(fpath)
-        if time.time() - os.path.getmtime(fpath) < 10:
-            return
         if not info:
             log(f"   -> ERROR: Could not read streams for {fname}; skipping.")
-            return
+            continue
         stem, ext = os.path.splitext(fname)
         if not info["a_codecs"] and CFG.get("ENABLE_SILENT_QUARANTINE") == "true":
             shutil.move(fpath, os.path.join(MEDIA_DIR, "no_audio", f"{stem}_NO_AUDIO{ext}"))
             log("   -> QUARANTINED to no_audio/ (0 audio streams)")
-            return
+            continue
         min_mins = float(CFG.get("MIN_RUNTIME_MINS", 45))
         is_short = (CFG.get("ENABLE_RUNTIME_CHECK") == "true" and info["duration_mins"] < min_mins)
         matched = None
