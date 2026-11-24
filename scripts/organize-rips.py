@@ -258,8 +258,10 @@ def process_finished():
         matched = query_database(query) if mode in ("db_only", "db_then_ai") and query.upper() not in ("DVD VIDEO", "DISC 1", "DISC 2", "VIDEO TS", "MOVIE") else None
         tmp_snap, has_snap = f"/tmp/grid_{int(time.time()*1000)}.jpg", False
         if not matched and mode in ("ai_only", "db_then_ai"):
-            has_snap = create_snapshot_grid(fpath, tmp_snap, info["duration_secs"])
-            guess = identify_with_ai(tmp_snap) if has_snap else None
+            guess = identify_with_ai(fpath, info["duration_secs"], "/tmp/ai_scans")
+            if os.path.exists("/tmp/ai_scans/preview_grid.jpg"):
+                shutil.move("/tmp/ai_scans/preview_grid.jpg", tmp_snap)
+                has_snap = True
             if guess:
                 matched = query_database(re.sub(r'\(\d{4}\)', '', guess).strip()) or guess
         if not matched:
