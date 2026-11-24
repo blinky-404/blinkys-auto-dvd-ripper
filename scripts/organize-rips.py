@@ -108,19 +108,53 @@ def clean_disc_name(filename):
     return re.sub(r'[._-]+', ' ', base).strip()
 
 # Query The Movie Database (TMDB) API for canonical title & release year
-def lookup_tmdb(query, token):
+def _tmdb_runtime_mins(media_type, item_id, token):
+    try:
+        u = f"https://themoviedb.org{media_type}/{item_id}"
+        rq = urllib.request.Request(u, headers={"Authorization": "Bearer " + token, "Accept": "application/json"})
+        with urllib.request.urlopen(rq, timeout=8) as resp:
+            d = json.loads(resp.read().decode())
+            if media_type == "movie":
+                return int(d.get("runtime") or 0)
+            eps = d.get("episode_run_time") or []
+            return int(eps[0]) if eps else 0
+    except Exception:
+        return 0
+
+def lookup_tmdb(query, token, duration_mins=0):
     if not token:
         return None
-    url = "https://api.themoviedb.org/3/search/multi?query=" + urllib.parse.quote(query)
+    url = "https://themoviedb.orgsearch/multi?include_adult=false&language=en-US&query=" + urllib.parse.quote(query)
     req = urllib.request.Request(url, headers={"Authorization": "Bearer " + token, "Accept": "application/json"})
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
-            for r in json.loads(resp.read().decode()).get("results", []):
-                if r.get("media_type") in ("movie", "tv"):
-                    title = r.get("title") or r.get("name")
-                    date = r.get("release_date") or r.get("first_air_date") or ""
-                    yr = date[:4] if len(date) >= 4 else ""
-                    return f"{title} ({yr})" if yr else title
+            candidates = [r for r in json.loads(resp.read().decode()).get("results", []) if r.get("media_type") in ("movie", "tv")][:8]
+            if not candidates:
+                return None
+            def score(r):
+                s = float(r.get("popularity") or 0)
+                if r.get("original_language") == "en":
+                    s += 100.0
+                else:
+                    s -= 50.0
+                if int(r.get("vote_count") or 0) >= 20:
+                    s += 40.0
+                if r.get("media_type") == "movie" and duration_mins >= 65:
+                    s += 25.0
+                return s
+            candidates.sort(key=score, reverse=True)
+            for r in candidates:
+                mtype = r.get("media_type")
+                mid = r.get("id")
+                title = r.get("title") or r.get("name")
+                date = r.get("release_date") or r.get("first_air_date") or ""
+                yr = date[:4] if len(date) >= 4 else ""
+                if duration_mins > 0 and mid:
+                    rt = _tmdb_runtime_mins(mtype, mid, token)
+                    if rt > 0 and abs(rt - duration_mins) > 8:
+                        log(f"   -> TMDB candidate rejected by runtime guard: {title} ({yr}) is {rt}m vs disc {duration_mins}m")
+                        continue
+                return f"{title} ({yr})" if yr else title
     except Exception as e:
         log(f"   -> TMDB lookup error: {e}")
     return None
@@ -370,14 +404,23 @@ def process_finished():
         dest_dir = os.path.join(MEDIA_DIR, base_bucket, safe)
         os.makedirs(dest_dir, exist_ok=True)
         shutil.move(fpath, os.path.join(dest_dir, f"{safe} - Extra ({info['duration_mins']}m){ext}" if is_short else f"{safe}{ext}"))
-        for r_root, _, r_files in os.walk(os.path.join(MEDIA_DIR, "raw")):
-            raw_stem = stem.split(" - ", 1).__getitem__(1) if " - " in stem else stem
-            if f"{stem}.mkv" in r_files or f"{raw_stem}.mkv" in r_files:
-                target_mkv = f"{stem}.mkv" if f"{stem}.mkv" in r_files else f"{raw_stem}.mkv"
-            os.remove(os.path.join(r_root, target_mkv))
-            if not os.listdir(r_root) and r_root != os.path.join(MEDIA_DIR, "raw"):
-                os.rmdir(r_root)
-        if has_snap and os.path.exists(tmp_snap):
+        parts = stem.split(" - ", 1)
+    disc_prefix = parts[0].strip() if len(parts) == 2 else ""
+    raw_stem = parts[1].strip() if len(parts) == 2 else stem
+    raw_base = os.path.join(MEDIA_DIR, "raw")
+    for r_root, _, r_files in os.walk(raw_base, topdown=False):
+        if r_root == raw_base:
+            continue
+        if disc_prefix and os.path.basename(r_root) != disc_prefix:
+            continue
+        for cand in (f"{stem}.mkv", f"{raw_stem}.mkv"):
+            if cand in r_files:
+                os.remove(os.path.join(r_root, cand))
+                log(f"   -> Deleted source MKV: {os.path.basename(r_root)}/{cand}")
+        if not os.listdir(r_root):
+            os.rmdir(r_root)
+            log(f"   -> Removed empty raw folder: {os.path.basename(r_root)}/")
+    if has_snap and os.path.exists(tmp_snap):
             shutil.move(tmp_snap, os.path.join(dest_dir, f"{safe}_AI_preview.jpg"))
             log(f"   -> Saved AI snapshot grid for review: {safe}_AI_preview.jpg")
         if CFG.get("SAVE_MOVIE_INFO_TXT") == "true":
