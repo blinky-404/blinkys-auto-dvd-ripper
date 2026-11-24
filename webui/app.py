@@ -301,13 +301,27 @@ def check_update():
     except Exception as e:
         return {"ok": False, "error": str(e)}
 
+@app.get("/api/update-log")
+def get_update_log():
+    log_path = os.path.join(SYSTEM_DIR, "logs", "update.log")
+    if not os.path.exists(log_path):
+        return {"log": ""}
+    with open(log_path, "r", errors="replace") as f:
+        return {"log": f.read()[-8000:]}
+
 @app.post("/api/update-stack")
 def update_stack():
     if not os.path.isdir("/repo/.git"):
         return JSONResponse({"ok": False, "error": "Repo mount /repo not found"}, status_code=400)
+    log_path = os.path.join(SYSTEM_DIR, "logs", "update.log")
+    os.makedirs(os.path.dirname(log_path), exist_ok=True)
     try:
+        with open(log_path, "w") as lf:
+            lf.write("=== Starting Stack Update ===\n[1/4] Pulling latest commits from origin/main...\n")
         subprocess.run(["git", "-C", "/repo", "config", "--global", "--add", "safe.directory", "/repo"], check=False)
-        subprocess.run(["git", "-C", "/repo", "pull", "origin", "main"], check=True, timeout=30, capture_output=True)
+        pull = subprocess.run(["git", "-C", "/repo", "pull", "origin", "main"], check=True, timeout=30, capture_output=True, text=True)
+        with open(log_path, "a") as lf:
+            lf.write(pull.stdout + pull.stderr + "\n[2/4] Updating ai_hold folder & HandBrake post_conversion.sh hook...\n")
         os.makedirs(os.path.join(MEDIA_DIR, "ai_hold"), exist_ok=True)
         hook_src = "/repo/scripts/handbrake-post-conversion.sh"
         hook_dst = os.path.join(SYSTEM_DIR, "handbrake", "hooks", "post_conversion.sh")
@@ -315,8 +329,25 @@ def update_stack():
             os.makedirs(os.path.dirname(hook_dst), exist_ok=True)
             shutil.copyfile(hook_src, hook_dst)
             os.chmod(hook_dst, 0o755)
-        # Launch detached rebuild using host docker CLI if present, or restart ripper-ui via docker socket
-        subprocess.Popen(["sh", "-c", "sleep 1 && docker compose -f /repo/docker-compose.yml up -d --build || true"], start_new_session=True)
-        return {"ok": True, "message": "Update pulled! Rebuilding container — page will reload in 25 seconds..."}
+        # Resolve host path of /repo via docker inspect so docker:cli helper can run compose up -d --build cleanly
+        host_repo = subprocess.check_output(
+            ["docker", "inspect", "ripper-ui", "--format", "{{range .Mounts}}{{if eq .Destination \"/repo\"}}{{.Source}}{{end}}{{end}}"],
+            text=True
+        ).strip()
+        with open(log_path, "a") as lf:
+            lf.write(f"[3/4] Launching detached Docker Compose rebuild from {host_repo}...\n")
+        subprocess.run(["docker", "rm", "-f", "ripper-updater"], check=False, capture_output=True)
+        subprocess.Popen([
+            "docker", "run", "--rm", "--name", "ripper-updater",
+            "-v", "/var/run/docker.sock:/var/run/docker.sock",
+            "-v", f"{host_repo}:/repo",
+            "-v", f"{SYSTEM_DIR}/logs:/logs",
+            "-w", "/repo",
+            "docker:cli", "sh", "-c",
+            "docker compose up -d --build >> /logs/update.log 2>&1 && echo '[4/4] === UPDATE COMPLETE ===' >> /logs/update.log || echo '[ERROR] Rebuild failed' >> /logs/update.log"
+        ], start_new_session=True)
+        return {"ok": True, "message": "Rebuilding containers in background..."}
     except Exception as e:
+        with open(log_path, "a") as lf:
+            lf.write(f"[ERROR] {e}\n")
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
