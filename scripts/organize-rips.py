@@ -305,7 +305,35 @@ def process_finished():
                 shutil.move("/tmp/ai_scans/preview_grid.jpg", tmp_snap)
                 has_snap = True
             if guess:
-                matched = query_database(re.sub(r'\(\d{4}\)', '', guess).strip()) or guess
+                m_yr = re.search(r"\((\d{4})\)", guess)
+                clean_guess = re.sub(r"\s*\(\d{4}\)", "", guess).strip()
+                cand_matched = query_database(clean_guess)
+                cand_year = m_yr.group(1) if m_yr else (re.search(r"\((\d{4})\)", cand_matched or "").group(1) if re.search(r"\((\d{4})\)", cand_matched or "") else None)
+                actual_mins = info["duration_secs"] / 60.0
+                tmdb_rt = get_tmdb_runtime(cand_matched or clean_guess, cand_year, CFG.get("TMDB_API_KEY"))
+                exact_rt = (actual_mins < 45) or (tmdb_rt is not None and abs(tmdb_rt - actual_mins) <= 6.0)
+                hard_mismatch = (actual_mins >= 45 and tmdb_rt is not None and abs(tmdb_rt - actual_mins) > 20.0)
+
+                if hard_mismatch:
+                    log(f"   -> FLAGGED AI hallucination: '{cand_matched or clean_guess}' (TMDB runtime {tmdb_rt}m != video {actual_mins:.0f}m); routing to (Unmatched).")
+                elif exact_rt and cand_matched:
+                    matched = cand_matched
+                else:
+                    sec_model = pick_secondary_ollama_model(CFG.get("LOCAL_AI_MODEL", "gemma3:4b")) if CFG.get("AI_PROVIDER") == "local_ollama" else None
+                    if sec_model and os.path.exists(tmp_snap):
+                        log(f"   -> Runtime not exact ({tmdb_rt or '?'}m vs {actual_mins:.0f}m); running second-opinion check with {sec_model}...")
+                        sec_prompt = "Identify the exact movie, TV show, or concert title shown in these video frames. Reply ONLY with the clean title (and year if known). If unsure, reply UNKNOWN."
+                        sec_raw = query_ollama_model(sec_model, sec_prompt, tmp_snap)
+                        sec_clean = re.sub(r"\s*\(\d{4}\)", "", sec_raw).strip()
+                        norm1 = re.sub(r"[^a-z0-9]", "", clean_guess.lower())
+                        norm2 = re.sub(r"[^a-z0-9]", "", sec_clean.lower())
+                        if norm1 and norm2 and (norm1 in norm2 or norm2 in norm1):
+                            log(f"   -> Dual-model consensus confirmed '{cand_matched or clean_guess}' ({sec_model} agreed).")
+                            matched = cand_matched or guess
+                        else:
+                            log(f"   -> FLAGGED AI disagreement: {CFG.get('LOCAL_AI_MODEL', 'gemma3:4b')}='{clean_guess}' vs {sec_model}='{sec_raw or 'UNKNOWN'}'; routing to (Unmatched).")
+                    elif cand_matched:
+                        matched = cand_matched
         if not matched:
             matched = f"{query or 'Unknown Disc'} (Unmatched)"
             if not has_snap and CFG.get("ENABLE_UNMATCHED_SNAPSHOTS") == "true":
@@ -327,7 +355,8 @@ def process_finished():
                 if not os.listdir(r_root) and r_root != os.path.join(MEDIA_DIR, "raw"):
                     os.rmdir(r_root)
         if has_snap and os.path.exists(tmp_snap):
-            shutil.move(tmp_snap, os.path.join(dest_dir, "preview_grid.jpg")) if "(Unmatched)" in safe else os.remove(tmp_snap)
+            shutil.move(tmp_snap, os.path.join(dest_dir, f"{safe}_AI_preview.jpg"))
+            log(f"   -> Saved AI snapshot grid for review: {safe}_AI_preview.jpg")
         if CFG.get("SAVE_MOVIE_INFO_TXT") == "true":
             with open(os.path.join(dest_dir, f"{safe}_info.txt"), "w") as tf:
                 tf.write(f"Title: {safe}\nSource: {fname}\nStatus: {'LOW QUALITY' if is_low else 'FULL QUALITY'}\nResolution: {info['width']}x{info['height']} ({info['v_codec']})\nBitrate: {info['bitrate_kbps']} kbps\nRuntime: {info['duration_mins']} mins\nAudio: {', '.join(info['a_codecs']) or 'NONE'}\n")
