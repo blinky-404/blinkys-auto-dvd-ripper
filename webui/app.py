@@ -394,7 +394,8 @@ def _finished_watcher_loop():
                     except OSError:
                         pass
                 subprocess.run(["python3", "/app/scripts/organize-rips.py"], check=False)
-        except Exception:
+        except Exception as e:
+            print(f"[WATCHER ERROR] {e}", flush=True)
             time.sleep(5)
 
 import threading

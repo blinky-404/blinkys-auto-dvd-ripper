@@ -372,11 +372,11 @@ def process_finished():
         shutil.move(fpath, os.path.join(dest_dir, f"{safe} - Extra ({info['duration_mins']}m){ext}" if is_short else f"{safe}{ext}"))
         for r_root, _, r_files in os.walk(os.path.join(MEDIA_DIR, "raw")):
             raw_stem = stem.split(" - ", 1).__getitem__(1) if " - " in stem else stem
-                if f"{stem}.mkv" in r_files or f"{raw_stem}.mkv" in r_files:
-                    target_mkv = f"{stem}.mkv" if f"{stem}.mkv" in r_files else f"{raw_stem}.mkv"
-                os.remove(os.path.join(r_root, target_mkv))
-                if not os.listdir(r_root) and r_root != os.path.join(MEDIA_DIR, "raw"):
-                    os.rmdir(r_root)
+            if f"{stem}.mkv" in r_files or f"{raw_stem}.mkv" in r_files:
+                target_mkv = f"{stem}.mkv" if f"{stem}.mkv" in r_files else f"{raw_stem}.mkv"
+            os.remove(os.path.join(r_root, target_mkv))
+            if not os.listdir(r_root) and r_root != os.path.join(MEDIA_DIR, "raw"):
+                os.rmdir(r_root)
         if has_snap and os.path.exists(tmp_snap):
             shutil.move(tmp_snap, os.path.join(dest_dir, f"{safe}_AI_preview.jpg"))
             log(f"   -> Saved AI snapshot grid for review: {safe}_AI_preview.jpg")
