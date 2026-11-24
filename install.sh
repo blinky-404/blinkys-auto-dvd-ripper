@@ -28,7 +28,7 @@ read -p "File Manager Port: " FILEBROWSER_PORT
 FILEBROWSER_PORT="${FILEBROWSER_PORT:-8091}"
 
 sudo mkdir -p "$BASE_DIR/ripper_system/"{config,logs,makemkv,handbrake,filebrowser,ollama}
-sudo mkdir -p "$BASE_DIR/ripper_media/"{raw,finished,organized_movies,low_quality_quarantine,raw_audio_backups,short_videos,no_audio}
+sudo mkdir -p "$BASE_DIR/ripper_media/"{raw,finished,organized_movies,low_quality_quarantine,raw_audio_backups,short_videos,ai_hold,no_audio}
 sudo chmod -R 777 "$BASE_DIR/ripper_system" "$BASE_DIR/ripper_media"
 [ -f "$BASE_DIR/ripper_system/config/organizer.conf" ] || cp config/organizer.conf.example "$BASE_DIR/ripper_system/config/organizer.conf"
 
@@ -46,9 +46,9 @@ ENV
 sudo cp scripts/udev-disc-trigger.sh /usr/local/bin/blinky-udev-trigger.sh && sudo chmod +x /usr/local/bin/blinky-udev-trigger.sh
 echo 'SUBSYSTEM=="block", KERNEL=="sr[0-9]*", ACTION=="add", RUN+="/usr/bin/systemd-run --no-block /usr/local/bin/blinky-udev-trigger.sh /dev/%k"' | sudo tee /etc/udev/rules.d/99-blinky-dvd-ripper.rules >/dev/null
 sudo udevadm control --reload-rules
-sudo mkdir -p "${SYSTEM_DIR}/handbrake/hooks"
-cp -f scripts/handbrake-post-conversion.sh "${SYSTEM_DIR}/handbrake/hooks/post_conversion.sh"
-chmod +x "${SYSTEM_DIR}/handbrake/hooks/post_conversion.sh"
+sudo mkdir -p "$BASE_DIR/ripper_system/handbrake/hooks"
+sudo cp -f scripts/handbrake-post-conversion.sh "$BASE_DIR/ripper_system/handbrake/hooks/post_conversion.sh"
+sudo chmod +x "$BASE_DIR/ripper_system/handbrake/hooks/post_conversion.sh"
 
 docker compose up -d --build
 echo "Done! Open http://$(hostname -I | awk '{print $1}'):$UI_PORT"
