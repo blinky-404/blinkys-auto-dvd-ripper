@@ -3,6 +3,17 @@
 # Blinky's Auto DVD Ripper v2.0 - Interactive One-Command Host Installer
 # ============================================================================
 set -e
+
+if [[ "${1:-}" == "--uninstall" ]]; then
+  echo "=== Blinky's Auto DVD Ripper Uninstaller ==="
+  docker compose down --remove-orphans || true
+  (crontab -l 2>/dev/null | grep -v "organize-rips.sh") | crontab - || true
+  rm -rf /DATA/ripper_system
+  echo "Containers, cron job, and /DATA/ripper_system removed."
+  echo "Your ripped media in /DATA/ripper_media was kept safe (delete manually if desired)."
+  exit 0
+fi
+
 echo "=== Blinky's Auto DVD Ripper v2.0 Installer ==="
 DEFAULT_BASE=$([ -d "/DATA" ] && echo "/DATA" || echo "/opt/blinky-ripper")
 read -p "Install base directory [$DEFAULT_BASE]: " BASE_DIR

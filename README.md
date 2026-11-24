@@ -56,3 +56,31 @@ By default, all media and system folders live under `/DATA` (`DATA_DIR=/DATA` in
 * **Proxmox VM (Recommended):** Create a Debian 12 / Ubuntu 24.04 VM, pass through your USB controller or SATA optical drives (`qm set <VMID> -usb0 host=...`), and run `./install.sh` normally.
 * **Proxmox LXC:** Requires a privileged container with `/dev/sr*` and `/dev/sg*` bind-mounted in `/etc/pve/lxc/<CTID>.conf`.
 * **Portainer:** Add this repository as a **Stack** (`docker-compose.yml`), define `DATA_DIR` in Portainer's environment variables, and deploy.
+
+## Hardware & Prerequisites
+
+* **Optical Drives:** Any USB or SATA DVD/Blu-ray drive supported by Linux (`/dev/sr*` + `/dev/sg*`). For 4K UHD Blu-rays, a **LibreDrive-compatible** drive is required.
+* **Powered USB Hub (Recommended for Multi-Drive):** Dual external USB optical drives draw high spin-up current. Use a **powered USB 3.0 hub**—the Web Control Center monitors `dmesg` for USB voltage/reset brownouts and alerts you automatically.
+* **MakeMKV Key:** MakeMKV includes a free beta key (updated periodically on the MakeMKV forums) or accepts a lifetime license key in the Web UI under **Setup & Toggles** (`MAKEMKV_KEY`).
+* **CPU & RAM for Local AI Vision (`moondream`):** Optional. Runs on CPU on demand (`~1.8 GB` RAM only during the ~15–25s identification step, then drops back to **`0 MB` idle RAM**).
+
+## Troubleshooting FAQ
+
+* **My optical drive isn't showing up in MakeMKV or the Dashboard:**
+  Ensure the SCSI generic kernel module is loaded (`sudo modprobe sg`) and check `ls -l /dev/sr* /dev/sg*`.
+* **DVD fails immediately with `COPY PROTECTION KEY EXCHANGE FAILURE`:**
+  New or replacement DVD drives often ship with Region `0` (unset) or a non-matching region. Install `regionset` (`sudo apt install regionset`) and set your drive region (e.g., `sudo regionset /dev/sr0` -> `1` for North America).
+* **Where do I enter my MakeMKV registration key or TMDB API key?**
+  Open the Web Control Center (`http://<SERVER-IP>:8090`), click **Setup & Toggles**, paste your keys, and click **Save Settings**.
+* **Why did my video go to `short_videos/`, `low_quality_quarantine/`, or `no_audio/`?**
+  * `short_videos/`: Valid videos shorter than `MIN_RUNTIME_MINS` (default `45m`, such as behind-the-scenes featurettes; trailers under `10m` are skipped at rip time).
+  * `low_quality_quarantine/`: Videos below your minimum resolution/bitrate threshold.
+  * `no_audio/`: Broken rips containing `0` audio streams.
+
+## Uninstall / Clean Reset
+
+To cleanly stop all containers, remove the scheduled organizer cron job, and wipe `/DATA/ripper_system` (while preserving your ripped videos in `/DATA/ripper_media`):
+
+```bash
+chmod +x install.sh && ./install.sh --uninstall
+```
