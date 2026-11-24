@@ -170,7 +170,7 @@ def lookup_tmdb(query, token, duration_mins=0):
         log(f"   -> TMDB lookup error: {e}")
     return None
 
-def (lookup_tvmaze(query) if (duration_mins < 65 or re.search(r'(?i)s\d{1,2}e\d{1,2}', query)) else None):
+def lookup_tvmaze(query):
     url = "https://://tvmaze.com" + urllib.parse.quote(query)
     try:
         with urllib.request.urlopen(url, timeout=10) as resp:
