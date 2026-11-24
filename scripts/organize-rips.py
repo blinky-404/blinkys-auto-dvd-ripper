@@ -167,26 +167,24 @@ def identify_with_ai(grid_jpg):
         obin = "/DATA/ripper_system/ollama/bin/ollama"
         env = dict(os.environ, OLLAMA_MODELS="/DATA/ripper_system/ollama/models", OLLAMA_HOST="127.0.0.1:11434")
         srv = subprocess.Popen([obin, "serve"], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) if os.path.exists(obin) else None
-        if not srv: subprocess.run(["docker", "start", "ripper-ai-vision"], capture_output=True)
-        time.sleep(3)
+        for _ in range(15):
+            try:
+                urllib.request.urlopen("http://127.0.0", timeout=1)
+                break
+            except Exception:
+                time.sleep(0.5)
         try:
-            for _ in range(15):
-                try:
-                    urllib.request.urlopen("http://127.0.0", timeout=1)
-                    break
-                except Exception:
-                    time.sleep(0.5)
-            payload = json.dumps({"model": model, "messages": [{"role": "user", "content": prompt, "images": [b64_img]}], "stream": False}).encode()
-            req = urllib.request.Request("http://127.0.0api/chat", data=payload, headers={"Content-Type": "application/json"})
-            with urllib.request.urlopen(req, timeout=120) as resp:
-                ans = (lambda d: d.get("response") or d.get("message", {}).get("content", ""))(json.loads(resp.read().decode())).strip()
-                if ans and "UNKNOWN" not in ans.upper():
-                    return re.sub(r'[\\/:*?"<>|]', '', ans).strip()
+            r = subprocess.run([obin, "run", model, f"{prompt}\n{grid_path}"], env=env, capture_output=True, text=True, timeout=120)
+            ans = re.sub(r'\x1b\[[0-9;?]*[a-zA-Z]', '', r.stdout or "").strip().splitlines()
+            ans = ans[-1].strip() if ans else ""
+            if ans and "UNKNOWN" not in ans.upper():
+                return re.sub(r'[\\/:*?"<>|]', '', ans).strip()
+            if r.stderr:
+                log(f"   -> Local Ollama Vision note: {r.stderr.strip().splitlines()[-1][:100]}")
         except Exception as ex:
             log(f"   -> Local Ollama Vision error: {ex}")
         finally:
             if srv: srv.terminate(); srv.wait(timeout=5)
-            else: subprocess.run(["docker", "stop", "ripper-ai-vision"], capture_output=True)
     elif provider == "gemini" and CFG.get("AI_API_KEY"):
         url = "https://://googleapis.com" + CFG["AI_API_KEY"]
         payload = json.dumps({"contents": [{"parts": [{"text": prompt}, {"inline_data": {"mime_type": "image/jpeg", "data": b64_img}}]}]}).encode()
