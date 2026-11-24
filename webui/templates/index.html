@@ -245,7 +245,7 @@ async function handleUpdateClick() {
       st.textContent = 'Update available: ' + r.remote;
       pill.style.color = '#fbbf24';
       pill.textContent = '● Updater: Update available (' + r.local + ' -> ' + r.remote + ')';
-      logEl.textContent = 'Latest commit: ' + r.latest_msg + '\nClick "Install Update (' + r.remote + ')" to pull and rebuild.';
+      logEl.textContent = 'Latest commit: ' + r.latest_msg + '\nClick "Install Update (' + r.remote + ')" to pull and rebuild (restarts containers — best run between active rips/encodes).';
     } catch (err) {
       btn.disabled = false;
       pill.style.color = '#f87171';
