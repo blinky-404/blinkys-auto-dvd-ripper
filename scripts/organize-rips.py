@@ -396,10 +396,10 @@ def process_finished():
         safe = re.sub(r'[\\/:*?"<>|]', '', matched).strip()
         is_low, reasons = False, []
         if CFG.get("ENABLE_QUALITY_SORT") == "true":
-            if info["height"] < int(CFG.get("MIN_VIDEO_HEIGHT", 300)):
-                is_low, reasons = True, reasons + [f"Height {info['height']}p"]
-            if 0 < info["bitrate_kbps"] < int(CFG.get("MIN_VIDEO_BITRATE_KBPS", 400)):
-                is_low, reasons = True, reasons + [f"Bitrate {info['bitrate_kbps']}kbps"]
+        if info["height"] < int(CFG.get("MIN_VIDEO_HEIGHT", 300)):
+            is_low, reasons = True, reasons + [f"Height {info['height']}p"]
+        if 0 < info["bitrate_kbps"] < int(CFG.get("MIN_VIDEO_BITRATE_KBPS", 400)):
+            is_low, reasons = True, reasons + [f"Bitrate {info['bitrate_kbps']}kbps"]
         base_bucket = "short_videos" if is_short else ("low_quality_quarantine" if is_low else "organized_movies")
         dest_dir = os.path.join(MEDIA_DIR, base_bucket, safe)
         os.makedirs(dest_dir, exist_ok=True)
@@ -410,22 +410,22 @@ def process_finished():
     raw_base = os.path.join(MEDIA_DIR, "raw")
     for r_root, _, r_files in os.walk(raw_base, topdown=False):
         if r_root == raw_base:
-            continue
+        continue
         if disc_prefix and os.path.basename(r_root) != disc_prefix:
-            continue
+        continue
         for cand in (f"{stem}.mkv", f"{raw_stem}.mkv"):
-            if cand in r_files:
-                os.remove(os.path.join(r_root, cand))
-                log(f"   -> Deleted source MKV: {os.path.basename(r_root)}/{cand}")
+        if cand in r_files:
+            os.remove(os.path.join(r_root, cand))
+            log(f"   -> Deleted source MKV: {os.path.basename(r_root)}/{cand}")
         if not os.listdir(r_root):
-            os.rmdir(r_root)
-            log(f"   -> Removed empty raw folder: {os.path.basename(r_root)}/")
+        os.rmdir(r_root)
+        log(f"   -> Removed empty raw folder: {os.path.basename(r_root)}/")
     if has_snap and os.path.exists(tmp_snap):
-            shutil.move(tmp_snap, os.path.join(dest_dir, f"{safe}_AI_preview.jpg"))
-            log(f"   -> Saved AI snapshot grid for review: {safe}_AI_preview.jpg")
+        shutil.move(tmp_snap, os.path.join(dest_dir, f"{safe}_AI_preview.jpg"))
+        log(f"   -> Saved AI snapshot grid for review: {safe}_AI_preview.jpg")
         if CFG.get("SAVE_MOVIE_INFO_TXT") == "true":
-            with open(os.path.join(dest_dir, f"{safe}_info.txt"), "w") as tf:
-                tf.write(f"Title: {safe}\nSource: {fname}\nStatus: {'LOW QUALITY' if is_low else 'FULL QUALITY'}\nResolution: {info['width']}x{info['height']} ({info['v_codec']})\nBitrate: {info['bitrate_kbps']} kbps\nRuntime: {info['duration_mins']} mins\nAudio: {', '.join(info['a_codecs']) or 'NONE'}\n")
+        with open(os.path.join(dest_dir, f"{safe}_info.txt"), "w") as tf:
+            tf.write(f"Title: {safe}\nSource: {fname}\nStatus: {'LOW QUALITY' if is_low else 'FULL QUALITY'}\nResolution: {info['width']}x{info['height']} ({info['v_codec']})\nBitrate: {info['bitrate_kbps']} kbps\nRuntime: {info['duration_mins']} mins\nAudio: {', '.join(info['a_codecs']) or 'NONE'}\n")
         log(f"   -> Routed to {base_bucket}/{safe}/")
 
     # Clean up any empty disc folders in raw/ (e.g. failed MakeMKV rips) older than 10 minutes
