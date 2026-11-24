@@ -18,6 +18,9 @@ services:
     restart: unless-stopped
     privileged: true
     network_mode: host
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
     environment:
       - SYSTEM_DIR=${SYSTEM_DIR:-${DATA_DIR:-/DATA}/ripper_system}
       - MEDIA_DIR=${MEDIA_DIR:-${DATA_DIR:-/DATA}/ripper_media}
