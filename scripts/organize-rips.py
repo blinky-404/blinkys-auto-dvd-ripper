@@ -398,7 +398,7 @@ def process_finished():
             if not has_snap and CFG.get("ENABLE_UNMATCHED_SNAPSHOTS") == "true":
                 has_snap = create_snapshot_grid(fpath, tmp_snap, info["duration_secs"])
     if not matched:
-        continue
+        return
     safe = re.sub(r'[\\/:*?"<>|]', '', matched).strip()
     is_low, reasons = False, []
     if CFG.get("ENABLE_QUALITY_SORT") == "true":
