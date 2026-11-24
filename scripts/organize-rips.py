@@ -209,7 +209,7 @@ def identify_with_ai(video_path, duration_secs, out_dir):
             if provider == "local_ollama":
                 with open(grid_path, "rb") as gf:
                     b64_img = base64.b64encode(gf.read()).decode()
-                payload = json.dumps({"model": model, "prompt": prompt, "images": [b64_img], "stream": False}).encode()
+                payload = json.dumps({"model": model, "prompt": prompt, "images": [b64_img], "stream": False, "keep_alive": "5m", "options": {"num_predict": 32, "temperature": 0.1}}).encode()
                 req = urllib.request.Request(f"http://127.0.0.1:{11434}/api/generate", data=payload, headers={"Content-Type": "application/json"})
                 with urllib.request.urlopen(req, timeout=300) as resp:
                     ans = json.loads(resp.read().decode()).get("response", "").strip()
