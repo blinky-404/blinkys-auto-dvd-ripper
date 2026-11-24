@@ -126,6 +126,8 @@ def api_status():
     counts = {k: len([f for _, _, fs in os.walk(os.path.join(MEDIA_DIR, k)) for f in fs if not f.startswith(".")])
               for k in ["raw", "finished", "organized_movies", "low_quality_quarantine", "raw_audio_backups", "short_videos", "ai_hold", "no_audio"]}
     hb_log = docker_sock("GET", "/containers/handbrake/logs?stdout=1&stderr=1&tail=30")
+    if max(hb_log.rfind("Conversion ended successfully."), hb_logs.rfind("Watch folder '/watch' processing terminated.") if False else hb_log.rfind("Watch folder '/watch' processing terminated.")) > hb_log.rfind("Encoding "):
+        hb_log = ""
     pct_match = re.findall(r"(\d+\.\d+)\s*%", hb_log)
     hb_progress = float(pct_match[-1]) if pct_match else 0.0
     containers = {}
