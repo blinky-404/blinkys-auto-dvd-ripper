@@ -372,5 +372,19 @@ def process_finished():
                 tf.write(f"Title: {safe}\nSource: {fname}\nStatus: {'LOW QUALITY' if is_low else 'FULL QUALITY'}\nResolution: {info['width']}x{info['height']} ({info['v_codec']})\nBitrate: {info['bitrate_kbps']} kbps\nRuntime: {info['duration_mins']} mins\nAudio: {', '.join(info['a_codecs']) or 'NONE'}\n")
         log(f"   -> Routed to {base_bucket}/{safe}/")
 
+    # Clean up any empty disc folders in raw/ (e.g. failed MakeMKV rips) older than 10 minutes
+    raw_root = os.path.join(MEDIA_DIR, "raw")
+    now = time.time()
+    for entry in os.listdir(raw_root) if os.path.isdir(raw_root) else []:
+        if entry.startswith("."):
+            continue
+        p = os.path.join(raw_root, entry)
+        if os.path.isdir(p) and not os.listdir(p) and (now - os.path.getmtime(p)) > 600:
+            try:
+                os.rmdir(p)
+                log(f"   -> Pruned empty raw folder: {entry}/")
+            except OSError:
+                pass
+
 if __name__ == "__main__":
     process_finished()
