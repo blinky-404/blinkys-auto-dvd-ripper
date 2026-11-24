@@ -170,10 +170,16 @@ def identify_with_ai(grid_jpg):
         if not srv: subprocess.run(["docker", "start", "ripper-ai-vision"], capture_output=True)
         time.sleep(3)
         try:
-            payload = json.dumps({"model": model, "prompt": prompt, "images": [b64_img], "stream": False}).encode()
-            req = urllib.request.Request("http://127.0.0", data=payload, headers={"Content-Type": "application/json"})
+            for _ in range(15):
+                try:
+                    urllib.request.urlopen("http://127.0.0", timeout=1)
+                    break
+                except Exception:
+                    time.sleep(0.5)
+            payload = json.dumps({"model": model, "messages": [{"role": "user", "content": prompt, "images": [b64_img]}], "stream": False}).encode()
+            req = urllib.request.Request("http://127.0.0api/chat", data=payload, headers={"Content-Type": "application/json"})
             with urllib.request.urlopen(req, timeout=120) as resp:
-                ans = json.loads(resp.read().decode()).get("response", "").strip()
+                ans = (lambda d: d.get("response") or d.get("message", {}).get("content", ""))(json.loads(resp.read().decode())).strip()
                 if ans and "UNKNOWN" not in ans.upper():
                     return re.sub(r'[\\/:*?"<>|]', '', ans).strip()
         except Exception as ex:
@@ -215,7 +221,7 @@ def process_finished():
             continue
         min_mins = float(CFG.get("MIN_RUNTIME_MINS", 45))
         is_short = (CFG.get("ENABLE_RUNTIME_CHECK") == "true" and info["duration_mins"] < min_mins)
-        mode, query = CFG.get("IDENTIFY_MODE", "db_then_ai"), re.sub(r"(\s*\(Unmatched\)|_SHORT_\d+m|\bt\d+\b|\b[A-Z]\d+\b)", "", clean_disc_name(fname), flags=re.I).strip()
+        mode, query = CFG.get("IDENTIFY_MODE", "db_then_ai"), re.sub(r"(\s*\(Unmatched\)|_SHORT_\d+m|\b(special|director.?s|extended|unrated|widescreen|fullscreen|collector.?s|anniversary|remastered|deluxe|theatrical|blu-?ray|dvd)\s*(edition|cut|version)?\b|\bt\d+\b|\b[A-Z]\d+\b)", "", clean_disc_name(fname), flags=re.I).strip()
         if len(query) <= 3: query = ""
         matched = query_database(query) if mode in ("db_only", "db_then_ai") and query.upper() not in ("DVD VIDEO", "DISC 1", "DISC 2", "VIDEO TS", "MOVIE") else None
         tmp_snap, has_snap = f"/tmp/grid_{int(time.time()*1000)}.jpg", False

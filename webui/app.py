@@ -194,6 +194,18 @@ async def install_local_ai(request: Request):
     subprocess.Popen(["bash", "-c", cmd])
     return {"ok": True, "message": f"Pulling {model} in background; container will stop automatically once ready."}
 
+def format_eject_banners(lines):
+    out, last_ok = [], True
+    for l in lines:
+        if "Disc rip terminated successfully" in l: last_ok = True
+        elif "Disc rip terminated with failure" in l: last_ok = False
+        if "Ejecting disc from" in l:
+            tag = "[EJECTED - SUCCESS]" if last_ok else "[EJECTED - FAILED]"
+            out.append(f"=== {tag} {l.split(']')[-1].strip()} ===")
+        else:
+            out.append(l)
+    return out
+
 def clean_progress_spam(lines):
     is_prog = lambda l: ("Current progress -" in l) or ("Encoding " in l and "task " in l) or ("fps, avg " in l and "ETA " in l)
     kept = [l for l in lines if not is_prog(l)]
@@ -203,8 +215,8 @@ def clean_progress_spam(lines):
     return kept[-80:]
 
 def collect_logs():
-    mk_raw = docker_sock("GET", "/containers/makemkv/logs?stdout=1&stderr=1&tail=250")
-    mk_filt = "\n".join(clean_progress_spam([l for l in mk_raw.splitlines() if re.search(r"(error|fail|sector|hash|title|cell|skip|eject|complete|rip|autodiscripper|disc|backing|detect|finish|saved|start|operation)", l, re.I)]))
+    mk_raw = docker_sock("GET", "/containers/makemkv/logs?stdout=1&stderr=1&tail=1000")
+    mk_filt = "\n".join(clean_progress_spam(format_eject_banners([l for l in mk_raw.splitlines() if re.search(r"(error|fail|sector|hash|title|cell|skip|eject|complete|rip|autodiscripper|disc|backing|detect|finish|saved|start|operation)", l, re.I)])))
     hb_raw = docker_sock("GET", "/containers/handbrake/logs?stdout=1&stderr=1&tail=150")
     hb_filt = "\n".join(clean_progress_spam([l for l in hb_raw.splitlines() if re.search(r"(error|fail|encoding|complete|scan|title|fps, avg)", l, re.I)]))
     aud = open(os.path.join(LOG_DIR, "audio_audit.log")).read() if os.path.exists(os.path.join(LOG_DIR, "audio_audit.log")) else ""
