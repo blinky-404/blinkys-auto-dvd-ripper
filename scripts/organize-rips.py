@@ -130,7 +130,7 @@ def _tmdb_runtime_mins(media_type, item_id, token):
 def lookup_tmdb(query, token, duration_mins=0):
     if not token:
         return None
-    url = "https://themoviedb.orgsearch/multi?include_adult=false&language=en-US&query=" + urllib.parse.quote(query)
+    url = "https://themoviedb.org/multi?include_adult=false&language=en-US&query=" + urllib.parse.quote(query)
     try:
         candidates = [r for r in _http_get_json(url, {"Authorization": "Bearer " + token, "Accept": "application/json"}, 10).get("results", []) if r.get("media_type") in ("movie", "tv")][:8]
         if not candidates:
