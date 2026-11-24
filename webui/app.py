@@ -195,10 +195,11 @@ async def install_local_ai(request: Request):
     return {"ok": True, "message": f"Pulling {model} in background; container will stop automatically once ready."}
 
 def clean_progress_spam(lines):
-    kept = [l for l in lines if "Current progress -" not in l and ("Encoding " not in l or " % (" not in l)]
-    prog = [l for l in lines if "Current progress -" in l or ("Encoding " in l and " % (" in l)]
+    is_prog = lambda l: ("Current progress -" in l) or ("Encoding " in l and "task " in l) or ("fps, avg " in l and "ETA " in l)
+    kept = [l for l in lines if not is_prog(l)]
+    prog = [l for l in lines if is_prog(l)]
     if prog:
-        kept.append("--- Latest Progress: " + prog[-1].strip() + " ---")
+        kept.append("--- Latest Progress: " + " ".join(p.strip() for p in prog[-2:]) + " ---")
     return kept[-80:]
 
 def collect_logs():
