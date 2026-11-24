@@ -329,23 +329,31 @@ def update_stack():
             os.makedirs(os.path.dirname(hook_dst), exist_ok=True)
             shutil.copyfile(hook_src, hook_dst)
             os.chmod(hook_dst, 0o755)
-        # Resolve host path of /repo via docker inspect so docker:cli helper can run compose up -d --build cleanly
-        host_repo = subprocess.check_output(
-            ["docker", "inspect", "ripper-ui", "--format", "{{range .Mounts}}{{if eq .Destination \"/repo\"}}{{.Source}}{{end}}{{end}}"],
-            text=True
-        ).strip()
+        # Inspect ripper-ui via Docker Unix socket to find the exact host path for /repo
+        info = json.loads(docker_sock("GET", "/containers/ripper-ui/json"))
+        host_repo = next((m["Source"] for m in info.get("Mounts", []) if m.get("Destination") == "/repo"), "")
         with open(log_path, "a") as lf:
             lf.write(f"[3/4] Launching detached Docker Compose rebuild from {host_repo}...\n")
-        subprocess.run(["docker", "rm", "-f", "ripper-updater"], check=False, capture_output=True)
-        subprocess.Popen([
-            "docker", "run", "--rm", "--name", "ripper-updater",
-            "-v", "/var/run/docker.sock:/var/run/docker.sock",
-            "-v", f"{host_repo}:/repo",
-            "-v", f"{SYSTEM_DIR}/logs:/logs",
-            "-w", "/repo",
-            "docker:cli", "sh", "-c",
-            "docker compose up -d --build >> /logs/update.log 2>&1 && echo '[4/4] === UPDATE COMPLETE ===' >> /logs/update.log || echo '[ERROR] Rebuild failed' >> /logs/update.log"
-        ], start_new_session=True)
+        docker_sock("DELETE", "/containers/ripper-updater?force=1")
+        docker_sock("POST", "/images/create?fromImage=docker&tag=cli")
+        create_payload = json.dumps({
+            "Image": "docker:cli",
+            "WorkingDir": "/repo",
+            "Cmd": ["sh", "-c", "docker compose up -d --build >> /logs/update.log 2>&1 && echo '[4/4] === UPDATE COMPLETE ===' >> /logs/update.log || echo '[ERROR] Rebuild failed' >> /logs/update.log"],
+            "HostConfig": {
+                "AutoRemove": True,
+                "Binds": [
+                    "/var/run/docker.sock:/var/run/docker.sock",
+                    f"{host_repo}:/repo",
+                    f"{SYSTEM_DIR}/logs:/logs"
+                ]
+            }
+        })
+        created = json.loads(docker_sock("POST", "/containers/create?name=ripper-updater", create_payload))
+        cid = created.get("Id")
+        if not cid:
+            raise RuntimeError(f"Failed to create updater container: {created}")
+        docker_sock("POST", f"/containers/{cid}/start")
         return {"ok": True, "message": "Rebuilding containers in background..."}
     except Exception as e:
         with open(log_path, "a") as lf:
