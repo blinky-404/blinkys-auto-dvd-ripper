@@ -189,7 +189,7 @@ async def save_config(request: Request):
 
 @app.post("/api/ai/install")
 async def install_local_ai(request: Request):
-    model = (await request.json()).get("model", "moondream")
+    model = (await request.json()).get("model", "gemma3:4b")
     cmd = f"docker rm -f ripper-ai-vision >/dev/null 2>&1; docker run -d --name ripper-ai-vision -p 127.0.0.1:11434:11434 -v {SYSTEM_DIR}/ollama:/root/.ollama ollama/ollama:latest && sleep 3 && docker exec ripper-ai-vision ollama pull {model} && docker stop ripper-ai-vision"
     subprocess.Popen(["bash", "-c", cmd])
     return {"ok": True, "message": f"Pulling {model} in background; container will stop automatically once ready."}

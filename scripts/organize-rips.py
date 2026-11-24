@@ -19,7 +19,7 @@ def load_conf():
     cfg = {
         "IDENTIFY_MODE": "db_then_ai", "PRIMARY_DB": "tmdb", "TMDB_TOKEN": "",
         "ENABLE_UNMATCHED_SNAPSHOTS": "true", "AI_PROVIDER": "local_ollama",
-        "LOCAL_AI_MODEL": "moondream", "AI_API_KEY": "",
+        "LOCAL_AI_MODEL": "gemma3:4b", "AI_API_KEY": "",
         "ENABLE_SILENT_QUARANTINE": "true", "ENABLE_RUNTIME_CHECK": "true",
         "MIN_RUNTIME_MINS": "45", "ENABLE_QUALITY_SORT": "true",
         "MIN_VIDEO_HEIGHT": "300", "MIN_VIDEO_BITRATE_KBPS": "400",
@@ -171,7 +171,7 @@ def identify_with_ai(video_path, duration_secs, out_dir):
     ]
     prompt = "Identify the exact movie, TV show, or concert title shown in these video frames (check any title cards, credits, actors, or logos). Reply ONLY with the clean title (and year if known). If completely unrecognizable, reply UNKNOWN."
     obin = "/DATA/ripper_system/ollama/bin/ollama"
-    model = CFG.get("LOCAL_AI_MODEL", "moondream")
+    model = CFG.get("LOCAL_AI_MODEL", "gemma3:4b")
     env = dict(os.environ, OLLAMA_MODELS="/DATA/ripper_system/ollama/models", OLLAMA_HOST="127.0.0.1:11434")
     srv = None
     if provider == "local_ollama" and os.path.exists(obin):
