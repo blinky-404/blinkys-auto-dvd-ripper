@@ -338,6 +338,7 @@ def update_stack():
         # Inspect ripper-ui via Docker Unix socket to find the exact host path for /repo
         info = json.loads(docker_sock("GET", "/containers/ripper-ui/json"))
         host_repo = next((m["Source"] for m in info.get("Mounts", []) if m.get("Destination") == "/repo"), "")
+        proj_name = info.get("Config", {}).get("Labels", {}).get("com.docker.compose.project", "blinkys-auto-dvd-ripper")
         with open(log_path, "a") as lf:
             lf.write(f"[3/4] Launching detached Docker Compose rebuild from {host_repo}...\n")
         docker_sock("DELETE", "/containers/ripper-updater?force=1")
@@ -346,7 +347,7 @@ def update_stack():
         create_payload = json.dumps({
             "Image": "docker:cli",
             "WorkingDir": "/repo",
-            "Cmd": ["sh", "-c", "docker compose up -d --build >> /logs/update.log 2>&1 && echo '[4/4] === UPDATE COMPLETE ===' >> /logs/update.log || echo '[ERROR] Rebuild failed' >> /logs/update.log"],
+            "Cmd": ["sh", "-c", f"docker compose -p {proj_name} up -d --build >> /logs/update.log 2>&1 && echo '[4/4] === UPDATE COMPLETE ===' >> /logs/update.log || echo '[ERROR] Rebuild failed' >> /logs/update.log"],
             "HostConfig": {
                 "AutoRemove": True,
                 "Binds": [
