@@ -228,7 +228,7 @@ def resolve_source_title(fpath, fname):
             raw_folder = os.path.basename(r)
             if not is_generic_name(raw_folder):
                 return raw_folder
-    return fname
+    return stem
 
 def pick_secondary_ollama_model(primary_model):
     chosen = CFG.get("SECONDARY_AI_MODEL", "moondream").strip()
@@ -379,7 +379,7 @@ def process_finished():
                 cand_matched = query_database(clean_guess, info.get("duration_mins", 0))
                 cand_year = m_yr.group(1) if m_yr else (re.search(r"\((\d{4})\)", cand_matched or "").group(1) if re.search(r"\((\d{4})\)", cand_matched or "") else None)
                 actual_mins = info["duration_secs"] / 60.0
-                tmdb_rt = get_tmdb_runtime(cand_matched or clean_guess, cand_year, CFG.get("TMDB_API_KEY"))
+                tmdb_rt = get_tmdb_runtime(cand_matched or clean_guess, cand_year, CFG.get("TMDB_TOKEN"))
                 exact_rt = (actual_mins < 45) or (tmdb_rt is not None and abs(tmdb_rt - actual_mins) <= 6.0)
                 hard_mismatch = (actual_mins >= 45 and tmdb_rt is not None and abs(tmdb_rt - actual_mins) > 20.0)
 
