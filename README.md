@@ -1,4 +1,4 @@
-# Blinky's Auto DVD Ripper (v2.0)
+# Blinky's Auto DVD Ripper (v2.1)
 
 A hands-free, self-hosted **DVD & Blu-ray auto-ripping, encoding, quality-auditing, and AI-assisted media organization appliance** with a unified **Web Control Center**. Works on **Ubuntu/Debian**, **CasaOS**, **ZimaOS**, or any Docker host.
 
