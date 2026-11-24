@@ -374,7 +374,7 @@ def _finished_watcher_loop():
     fin_dir = os.path.join(MEDIA_DIR, "finished")
     while True:
         try:
-            time.sleep(2)
+            time.sleep(3)
             has_trig = os.path.exists(trig)
             settled_mp4 = False
             if not has_trig and os.path.isdir(fin_dir):
@@ -386,13 +386,13 @@ def _finished_watcher_loop():
                     if os.path.isfile(fp) and (now - os.path.getmtime(fp)) > 15:
                         settled_mp4 = True
                         break
-            if (has_trig or settled_mp4) and not ACTION_STATE.get("busy"):
+            if has_trig or settled_mp4:
                 if has_trig:
                     try:
                         os.remove(trig)
                     except OSError:
                         pass
-                run_bg_action("Organizer", ["python3", "/app/scripts/organize-rips.py"])
+                subprocess.run(["python3", "/app/scripts/organize-rips.py"], check=False)
         except Exception:
             time.sleep(5)
 
