@@ -2,8 +2,15 @@
 # Blinky's Auto DVD Ripper v2.0 - Multi-Container Docker Stack
 # Services: MakeMKV (:5800), HandBrake (:5801), FileBrowser (:8091), Web UI (:8090)
 # ============================================================================
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   ripper-ui:
+    logging: *default-logging
     build:
       context: .
       dockerfile: webui/Dockerfile
@@ -25,6 +32,7 @@ services:
       - /dev:/dev
 
   filebrowser:
+    logging: *default-logging
     image: filebrowser/filebrowser:latest
     container_name: ripper-filebrowser
     restart: unless-stopped
@@ -40,6 +48,7 @@ services:
       - ${SYSTEM_DIR:-${DATA_DIR:-/DATA}/ripper_system}/filebrowser:/database
 
   makemkv:
+    logging: *default-logging
     image: jlesage/makemkv:latest
     container_name: makemkv
     restart: unless-stopped
@@ -64,6 +73,7 @@ services:
       - /dev:/dev
 
   handbrake:
+    logging: *default-logging
     image: jlesage/handbrake:latest
     container_name: handbrake
     restart: unless-stopped
