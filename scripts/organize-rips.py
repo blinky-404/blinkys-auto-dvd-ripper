@@ -131,9 +131,12 @@ def lookup_tmdb(query, token, duration_mins=0):
     if not token:
         return None
     is_tv_query = bool(re.search(r'(?i)\b(s\d{1,2}e\d{1,2}|season\s*\d+|disc\s*\d+)\b', query))
-    url = "/".join(["https:", "", "api.themoviedb.org", "3", "search", "multi"]) + "?include_adult=false&language=en-US&query=" + urllib.parse.quote(query)
+    endpoint = "tv" if is_tv_query else ("movie" if duration_mins >= 65 else "multi")
+    url = "/".join(["https:", "", "api.themoviedb.org", "3", "search", endpoint]) + "?include_adult=false&language=en-US&query=" + urllib.parse.quote(query)
     try:
         raw_res = _http_get_json(url, {"Authorization": "Bearer " + token, "Accept": "application/json"}, 10).get("results", [])
+        for r in raw_res:
+            r.setdefault("media_type", endpoint if endpoint in ("movie", "tv") else "movie")
         candidates = [r for r in raw_res if r.get("media_type") in ("movie", "tv")][:10]
         if not candidates:
             return None
