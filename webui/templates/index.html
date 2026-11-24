@@ -75,11 +75,11 @@
         <label style="display:inline-block;margin-right:12px;color:#fcd34d;"><input type="checkbox" id="lg-srv"> Save Copy to Server</label>
         <button onclick="loadLogs()">Refresh</button> <button onclick="exportReport()">Download .TXT Report</button>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-        <div><div style="color:#818cf8;font-size:12px;margin-bottom:4px;">MakeMKV Alerts</div><pre id="box-mkv"></pre></div>
-        <div><div style="color:#34d399;font-size:12px;margin-bottom:4px;">Audio Audits & Backups</div><pre id="box-aud"></pre></div>
-        <div><div style="color:#fbbf24;font-size:12px;margin-bottom:4px;">HandBrake Log</div><pre id="box-hb"></pre></div>
-        <div><div style="color:#38bdf8;font-size:12px;margin-bottom:4px;">Organizer Log</div><pre id="box-org"></pre></div>
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;">
+        <div style="min-width:0;"><div style="color:#818cf8;font-size:12px;margin-bottom:4px;">MakeMKV Alerts</div><pre id="box-mkv" style="width:100%;box-sizing:border-box;"></pre></div>
+        <div style="min-width:0;"><div style="color:#34d399;font-size:12px;margin-bottom:4px;">Audio Audits & Backups</div><pre id="box-aud" style="width:100%;box-sizing:border-box;"></pre></div>
+        <div style="min-width:0;"><div style="color:#fbbf24;font-size:12px;margin-bottom:4px;">HandBrake Log</div><pre id="box-hb" style="width:100%;box-sizing:border-box;"></pre></div>
+        <div style="min-width:0;"><div style="color:#38bdf8;font-size:12px;margin-bottom:4px;">Organizer Log</div><pre id="box-org" style="width:100%;box-sizing:border-box;"></pre></div>
       </div>
     </section>
     <section id="sec-setup" class="hidden">
