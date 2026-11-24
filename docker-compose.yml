@@ -12,15 +12,15 @@ services:
     privileged: true
     network_mode: host
     environment:
-      - SYSTEM_DIR=${SYSTEM_DIR:-/DATA/ripper_system}
-      - MEDIA_DIR=${MEDIA_DIR:-/DATA/ripper_media}
+      - SYSTEM_DIR=${SYSTEM_DIR:-${DATA_DIR:-/DATA}/ripper_system}
+      - MEDIA_DIR=${MEDIA_DIR:-${DATA_DIR:-/DATA}/ripper_media}
       - UI_PORT=${UI_PORT:-8090}
       - MAKEMKV_PORT=${MAKEMKV_PORT:-5800}
       - HANDBRAKE_PORT=${HANDBRAKE_PORT:-5801}
       - FILEBROWSER_PORT=${FILEBROWSER_PORT:-8091}
     volumes:
-      - ${SYSTEM_DIR:-/DATA/ripper_system}:/DATA/ripper_system
-      - ${MEDIA_DIR:-/DATA/ripper_media}:/DATA/ripper_media
+      - ${SYSTEM_DIR:-${DATA_DIR:-/DATA}/ripper_system}:${DATA_DIR:-/DATA}/ripper_system
+      - ${MEDIA_DIR:-${DATA_DIR:-/DATA}/ripper_media}:${DATA_DIR:-/DATA}/ripper_media
       - /var/run/docker.sock:/var/run/docker.sock
       - /dev:/dev
 
@@ -36,8 +36,8 @@ services:
       - FB_NOAUTH=true
     command: "--noauth"
     volumes:
-      - ${MEDIA_DIR:-/DATA/ripper_media}:/srv
-      - ${SYSTEM_DIR:-/DATA/ripper_system}/filebrowser:/database
+      - ${MEDIA_DIR:-${DATA_DIR:-/DATA}/ripper_media}:/srv
+      - ${SYSTEM_DIR:-${DATA_DIR:-/DATA}/ripper_system}/filebrowser:/database
 
   makemkv:
     image: jlesage/makemkv:latest
@@ -58,9 +58,9 @@ services:
       # Skip short trailers/menus under 10 mins (600s); keep featurettes & movies
       - AUTO_DISC_RIPPER_MIN_TITLE_LENGTH=600
     volumes:
-      - ${SYSTEM_DIR:-/DATA/ripper_system}/makemkv:/config
-      - ${MEDIA_DIR:-/DATA/ripper_media}/raw:/output
-      - ${MEDIA_DIR:-/DATA/ripper_media}:/storage
+      - ${SYSTEM_DIR:-${DATA_DIR:-/DATA}/ripper_system}/makemkv:/config
+      - ${MEDIA_DIR:-${DATA_DIR:-/DATA}/ripper_media}/raw:/output
+      - ${MEDIA_DIR:-${DATA_DIR:-/DATA}/ripper_media}:/storage
       - /dev:/dev
 
   handbrake:
@@ -81,6 +81,6 @@ services:
       - AUTOMATED_CONVERSION_KEEP_SOURCE=1
       - AUTOMATED_CONVERSION_OUTPUT_DIR=/output
     volumes:
-      - ${SYSTEM_DIR:-/DATA/ripper_system}/handbrake:/config
-      - ${MEDIA_DIR:-/DATA/ripper_media}/raw:/watch
-      - ${MEDIA_DIR:-/DATA/ripper_media}/finished:/output
+      - ${SYSTEM_DIR:-${DATA_DIR:-/DATA}/ripper_system}/handbrake:/config
+      - ${MEDIA_DIR:-${DATA_DIR:-/DATA}/ripper_media}/raw:/watch
+      - ${MEDIA_DIR:-${DATA_DIR:-/DATA}/ripper_media}/finished:/output
