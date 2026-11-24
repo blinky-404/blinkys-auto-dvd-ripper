@@ -207,9 +207,12 @@ def identify_with_ai(video_path, duration_secs, out_dir):
 
             ans = ""
             if provider == "local_ollama":
-                r = subprocess.run([obin, "run", model, f"{prompt}\n{grid_path}"], env=env, capture_output=True, text=True, timeout=120)
-                lines_out = re.sub(r'\x1b\[[0-9;?]*[a-zA-Z]', '', r.stdout or "").strip().splitlines()
-                ans = lines_out[-1].strip() if lines_out else ""
+                with open(grid_path, "rb") as gf:
+                    b64_img = base64.b64encode(gf.read()).decode()
+                payload = json.dumps({"model": model, "prompt": prompt, "images": [b64_img], "stream": False}).encode()
+                req = urllib.request.Request("http://127.0.0", data=payload, headers={"Content-Type": "application/json"})
+                with urllib.request.urlopen(req, timeout=300) as resp:
+                    ans = json.loads(resp.read().decode()).get("response", "").strip()
             elif provider == "gemini" and CFG.get("GEMINI_API_KEY"):
                 with open(grid_path, "rb") as gf:
                     b64_img = base64.b64encode(gf.read()).decode()
