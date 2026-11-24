@@ -155,7 +155,7 @@ def lookup_tmdb(query, token, duration_mins=0):
         for r in candidates:
             mtype = r.get("media_type")
             if mtype == "tv" and duration_mins >= 65 and not is_tv_query:
-                return
+                continue
             mid = r.get("id")
             title = r.get("title") or r.get("name")
             date = r.get("release_date") or r.get("first_air_date") or ""
@@ -164,7 +164,7 @@ def lookup_tmdb(query, token, duration_mins=0):
                 rt = _tmdb_runtime_mins(mtype, mid, token)
                 if rt > 0 and abs(rt - duration_mins) > 8:
                     log(f"   -> TMDB candidate rejected by runtime guard: {title} ({yr}) is {rt}m vs disc {duration_mins}m")
-                    return
+                    continue
             return f"{title} ({yr})" if yr else title
     except Exception as e:
         log(f"   -> TMDB lookup error: {e}")
