@@ -1,7 +1,4 @@
 #!/bin/sh
-# jlesage/handbrake post_conversion.sh hook
-# Prefixes descriptive parent disc folder name onto finished MP4 and pauses HandBrake
-# while ripper-ui organizes the file and cleans up raw/<DISC_FOLDER>.
 CONVERSION_STATUS="$1"
 OUTPUT_FILE="$2"
 SOURCE_FILE="$3"
@@ -27,17 +24,13 @@ if [ "$CONVERSION_STATUS" = "0" ] && [ -n "$OUTPUT_FILE" ] && [ -f "$OUTPUT_FILE
       ;;
   esac
 
-  HOST_IP=$(ip route 2>/dev/null | awk '/default/ {print $3}')
-  [ -z "$HOST_IP" ] && HOST_IP="172.17.0.1"
-  UI_URL="http://${HOST_IP}:${UI_PORT:-8090}"
-
-  echo "[post_conversion] Encode complete: $OUTPUT_FILE — triggering organizer at $UI_URL..."
-  wget -qO- --post-data="" "$UI_URL/api/run-organizer" >/dev/null 2>&1 || true
-  sleep 3
+  TRIGGER="/output/.trigger_organizer"
+  touch "$TRIGGER"
+  echo "[post_conversion] Encode complete: $OUTPUT_FILE — waiting for ripper-ui organizer..."
   TRIES=0
-  while wget -qO- "$UI_URL/api/status" 2>/dev/null | grep -q '"busy": true' && [ "$TRIES" -lt 300 ]; do
+  while [ -f "$TRIGGER" ] && [ "$TRIES" -lt 300 ]; do
     TRIES=$((TRIES + 1))
     sleep 2
   done
-  echo "[post_conversion] Organizer step complete (polls=$TRIES) — resuming HandBrake queue."
+  echo "[post_conversion] Organizer finished (polls=$TRIES) — resuming HandBrake queue."
 fi

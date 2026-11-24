@@ -367,3 +367,33 @@ def update_stack():
         with open(log_path, "a") as lf:
             lf.write(f"[ERROR] {e}\n")
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+
+def _finished_watcher_loop():
+    trig = os.path.join(MEDIA_DIR, "finished", ".trigger_organizer")
+    fin_dir = os.path.join(MEDIA_DIR, "finished")
+    while True:
+        try:
+            time.sleep(2)
+            has_trig = os.path.exists(trig)
+            settled_mp4 = False
+            if not has_trig and os.path.isdir(fin_dir):
+                now = time.time()
+                for fn in os.listdir(fin_dir):
+                    if fn.startswith(".") or not fn.lower().endswith((".mp4", ".mkv")):
+                        continue
+                    fp = os.path.join(fin_dir, fn)
+                    if os.path.isfile(fp) and (now - os.path.getmtime(fp)) > 15:
+                        settled_mp4 = True
+                        break
+            if (has_trig or settled_mp4) and not ACTION_STATE.get("busy"):
+                if has_trig:
+                    try:
+                        os.remove(trig)
+                    except OSError:
+                        pass
+                run_bg_action("Organizer", ["python3", "/app/scripts/organize-rips.py"])
+        except Exception:
+            time.sleep(5)
+
+threading.Thread(target=_finished_watcher_loop, daemon=True).start()
