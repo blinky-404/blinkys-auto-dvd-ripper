@@ -158,14 +158,9 @@ def query_database(query):
 # Fallback: capture a 2x2 frame grid and query Local Ollama (moondream) or Cloud AI
 def current_cpu_pct():
     try:
-        with open("/proc/stat") as f:
-            a = [float(x) for x in f.readline().split()[1:8]]
-        time.sleep(0.3)
-        with open("/proc/stat") as f:
-            b = [float(x) for x in f.readline().split()[1:8]]
-        idle = (b + b) - (a + a)
-        tot = sum(b) - sum(a)
-        return round((1.0 - idle / tot) * 100, 1) if tot > 0 else 0.0
+        load1 = os.getloadavg().__getitem__(0)
+        cores = os.cpu_count() or 1
+        return round(min(100.0, (load1 / cores) * 100.0), 1)
     except Exception:
         return 0.0
 
