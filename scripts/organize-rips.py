@@ -210,7 +210,7 @@ def identify_with_ai(video_path, duration_secs, out_dir):
                 with open(grid_path, "rb") as gf:
                     b64_img = base64.b64encode(gf.read()).decode()
                 payload = json.dumps({"model": model, "prompt": prompt, "images": [b64_img], "stream": False}).encode()
-                req = urllib.request.Request(f"http://127.0.0.1:{11434}/", data=payload, headers={"Content-Type": "application/json"})
+                req = urllib.request.Request(f"http://127.0.0.1:{11434}/api/generate", data=payload, headers={"Content-Type": "application/json"})
                 with urllib.request.urlopen(req, timeout=300) as resp:
                     ans = json.loads(resp.read().decode()).get("response", "").strip()
             elif provider == "gemini" and CFG.get("GEMINI_API_KEY"):
