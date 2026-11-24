@@ -361,8 +361,10 @@ def process_finished():
         os.makedirs(dest_dir, exist_ok=True)
         shutil.move(fpath, os.path.join(dest_dir, f"{safe} - Extra ({info['duration_mins']}m){ext}" if is_short else f"{safe}{ext}"))
         for r_root, _, r_files in os.walk(os.path.join(MEDIA_DIR, "raw")):
-            if f"{stem}.mkv" in r_files:
-                os.remove(os.path.join(r_root, f"{stem}.mkv"))
+            raw_stem = stem.split(" - ", 1).__getitem__(1) if " - " in stem else stem
+                if f"{stem}.mkv" in r_files or f"{raw_stem}.mkv" in r_files:
+                    target_mkv = f"{stem}.mkv" if f"{stem}.mkv" in r_files else f"{raw_stem}.mkv"
+                os.remove(os.path.join(r_root, target_mkv))
                 if not os.listdir(r_root) and r_root != os.path.join(MEDIA_DIR, "raw"):
                     os.rmdir(r_root)
         if has_snap and os.path.exists(tmp_snap):
