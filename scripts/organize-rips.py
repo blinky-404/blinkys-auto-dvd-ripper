@@ -152,7 +152,7 @@ def lookup_tmdb(query, token, duration_mins=0):
         for r in candidates:
             mtype = r.get("media_type")
             if mtype == "tv" and duration_mins >= 65 and not is_tv_query:
-                continue
+                return
             mid = r.get("id")
             title = r.get("title") or r.get("name")
             date = r.get("release_date") or r.get("first_air_date") or ""
@@ -161,7 +161,7 @@ def lookup_tmdb(query, token, duration_mins=0):
                 rt = _tmdb_runtime_mins(mtype, mid, token)
                 if rt > 0 and abs(rt - duration_mins) > 8:
                     log(f"   -> TMDB candidate rejected by runtime guard: {title} ({yr}) is {rt}m vs disc {duration_mins}m")
-                    continue
+                    return
             return f"{title} ({yr})" if yr else title
     except Exception as e:
         log(f"   -> TMDB lookup error: {e}")
@@ -282,7 +282,7 @@ def identify_with_ai(video_path, duration_secs, out_dir):
                 if os.path.exists(f_out):
                     frames.append(f_out)
             if not frames:
-                continue
+                return
             total_snaps += len(frames)
             cols = 2 if len(frames) <= 4 else 3
             rows = (len(frames) + cols - 1) // cols
@@ -292,7 +292,7 @@ def identify_with_ai(video_path, duration_secs, out_dir):
                 try: os.remove(f)
                 except OSError: pass
             if not os.path.exists(grid_path):
-                continue
+                return
 
             ans = ""
             if provider == "local_ollama":
@@ -337,16 +337,19 @@ def process_finished():
         fname = os.path.basename(fpath)
         log(f"Processing: {fname}")
         info = probe_media(fpath)
+        if time.time() - os.path.getmtime(fpath) < 10:
+            return
         if not info:
             log(f"   -> ERROR: Could not read streams for {fname}; skipping.")
-            continue
+            return
         stem, ext = os.path.splitext(fname)
         if not info["a_codecs"] and CFG.get("ENABLE_SILENT_QUARANTINE") == "true":
             shutil.move(fpath, os.path.join(MEDIA_DIR, "no_audio", f"{stem}_NO_AUDIO{ext}"))
             log("   -> QUARANTINED to no_audio/ (0 audio streams)")
-            continue
+            return
         min_mins = float(CFG.get("MIN_RUNTIME_MINS", 45))
         is_short = (CFG.get("ENABLE_RUNTIME_CHECK") == "true" and info["duration_mins"] < min_mins)
+        matched = None
         mode = CFG.get("IDENTIFY_MODE", "db_then_ai")
         raw_title = resolve_source_title(fpath, fname)
         query = re.sub(r"(\s*\(\d{4}\)|\s*\(Unmatched\)|_SHORT_\d+m|\b(special|director.?s|extended|unrated|widescreen|fullscreen|collector.?s|anniversary|remastered|deluxe|theatrical|blu-?ray|dvd)\s*(edition|cut|version)?\b|\bt\d+\b|\b[A-Z]\d+\b)", "", clean_disc_name(raw_title), flags=re.I).strip()
@@ -362,7 +365,7 @@ def process_finished():
                 if os.path.abspath(fpath) != os.path.abspath(dest_hold):
                     shutil.move(fpath, dest_hold)
                 log(f"   -> CPU load at {cpu_now}% (>= 70%); parked in ai_hold/ until CPU is below 70%.")
-                continue
+                return
             guess = identify_with_ai(fpath, info["duration_secs"], "/tmp/ai_scans")
             if os.path.exists("/tmp/ai_scans/preview_grid.jpg"):
                 shutil.move("/tmp/ai_scans/preview_grid.jpg", tmp_snap)
@@ -420,9 +423,9 @@ def process_finished():
     raw_base = os.path.join(MEDIA_DIR, "raw")
     for r_root, _, r_files in os.walk(raw_base, topdown=False):
         if r_root == raw_base:
-            continue
+            return
         if disc_prefix and os.path.basename(r_root) != disc_prefix:
-            continue
+            return
         for cand in (f"{stem}.mkv", f"{raw_stem}.mkv"):
             if cand in r_files:
                 os.remove(os.path.join(r_root, cand))
@@ -443,7 +446,7 @@ def process_finished():
     now = time.time()
     for entry in os.listdir(raw_root) if os.path.isdir(raw_root) else []:
         if entry.startswith("."):
-            continue
+            return
         p = os.path.join(raw_root, entry)
         if os.path.isdir(p) and not os.listdir(p) and (now - os.path.getmtime(p)) > 600:
             try:
