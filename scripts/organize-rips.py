@@ -343,6 +343,7 @@ def process_finished():
         log("Organizer check complete: No new files in finished/.")
         return
     for fpath in sorted(files):
+        matched = None
         if time.time() - os.path.getmtime(fpath) < 20:
             continue
         fname = os.path.basename(fpath)
