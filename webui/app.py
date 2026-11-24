@@ -285,3 +285,38 @@ def stream_media(path: str = Query(...)):
         return FileResponse(full, media_type="video/mp4")
     proc = subprocess.Popen(["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", full, "-c:v", "libx264", "-preset", "ultrafast", "-crf", "26", "-c:a", "aac", "-b:a", "128k", "-movflags", "frag_keyframe+empty_moov", "-f", "mp4", "pipe:1"], stdout=subprocess.PIPE)
     return StreamingResponse(iter(lambda: proc.stdout.read(65536), b""), media_type="video/mp4")
+
+
+@app.get("/api/check-update")
+def check_update():
+    if not os.path.isdir("/repo/.git"):
+        return {"ok": False, "error": "Repo mount /repo not found"}
+    try:
+        subprocess.run(["git", "-C", "/repo", "config", "--global", "--add", "safe.directory", "/repo"], check=False)
+        subprocess.run(["git", "-C", "/repo", "fetch", "origin", "main"], check=True, timeout=20, capture_output=True)
+        local_sha = subprocess.check_output(["git", "-C", "/repo", "rev-parse", "--short", "HEAD"], text=True).strip()
+        remote_sha = subprocess.check_output(["git", "-C", "/repo", "rev-parse", "--short", "origin/main"], text=True).strip()
+        msg = subprocess.check_output(["git", "-C", "/repo", "log", "-1", "--pretty=%s", "origin/main"], text=True).strip()
+        return {"ok": True, "up_to_date": local_sha == remote_sha, "local": local_sha, "remote": remote_sha, "latest_msg": msg}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+@app.post("/api/update-stack")
+def update_stack():
+    if not os.path.isdir("/repo/.git"):
+        return JSONResponse({"ok": False, "error": "Repo mount /repo not found"}, status_code=400)
+    try:
+        subprocess.run(["git", "-C", "/repo", "config", "--global", "--add", "safe.directory", "/repo"], check=False)
+        subprocess.run(["git", "-C", "/repo", "pull", "origin", "main"], check=True, timeout=30, capture_output=True)
+        os.makedirs(os.path.join(MEDIA_DIR, "ai_hold"), exist_ok=True)
+        hook_src = "/repo/scripts/handbrake-post-conversion.sh"
+        hook_dst = os.path.join(SYSTEM_DIR, "handbrake", "hooks", "post_conversion.sh")
+        if os.path.exists(hook_src):
+            os.makedirs(os.path.dirname(hook_dst), exist_ok=True)
+            shutil.copyfile(hook_src, hook_dst)
+            os.chmod(hook_dst, 0o755)
+        # Launch detached rebuild using host docker CLI if present, or restart ripper-ui via docker socket
+        subprocess.Popen(["sh", "-c", "sleep 1 && docker compose -f /repo/docker-compose.yml up -d --build || true"], start_new_session=True)
+        return {"ok": True, "message": "Update pulled! Rebuilding container — page will reload in 25 seconds..."}
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)

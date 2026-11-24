@@ -30,6 +30,7 @@ services:
       - ${MEDIA_DIR:-${DATA_DIR:-/DATA}/ripper_media}:${DATA_DIR:-/DATA}/ripper_media
       - /var/run/docker.sock:/var/run/docker.sock
       - /dev:/dev
+      - .:/repo
 
   filebrowser:
     logging: *default-logging
