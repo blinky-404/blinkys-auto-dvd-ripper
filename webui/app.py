@@ -335,7 +335,8 @@ def update_stack():
         with open(log_path, "a") as lf:
             lf.write(f"[3/4] Launching detached Docker Compose rebuild from {host_repo}...\n")
         docker_sock("DELETE", "/containers/ripper-updater?force=1")
-        docker_sock("POST", "/images/create?fromImage=docker&tag=cli")
+        if "No such image" in docker_sock("GET", "/images/docker:cli/json"):
+            subprocess.run(["curl", "-s", "-X", "POST", "--unix-socket", "/var/run/docker.sock", "http://localhost/images/create?fromImage=docker&tag=cli"], check=True, timeout=180, capture_output=True)
         create_payload = json.dumps({
             "Image": "docker:cli",
             "WorkingDir": "/repo",
