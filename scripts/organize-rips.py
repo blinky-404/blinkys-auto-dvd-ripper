@@ -175,6 +175,16 @@ def resolve_source_title(fpath, fname):
                 return raw_folder
     return fname
 
+def pick_secondary_ollama_model(primary_model):
+    chosen = CFG.get("SECONDARY_AI_MODEL", "moondream").strip()
+    if not chosen or chosen.lower() == "none" or chosen == primary_model:
+        return None
+    mdir = "/DATA/ripper_system/ollama/models/manifests/registry.ollama.ai/library"
+    if not os.path.isdir(mdir):
+        return None
+    base = chosen.partition(":").__getitem__(0)
+    return chosen if base in os.listdir(mdir) else None
+
 def current_cpu_pct():
     try:
         load1 = os.getloadavg().__getitem__(0)
