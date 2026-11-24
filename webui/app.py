@@ -396,4 +396,5 @@ def _finished_watcher_loop():
         except Exception:
             time.sleep(5)
 
+import threading
 threading.Thread(target=_finished_watcher_loop, daemon=True).start()
