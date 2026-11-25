@@ -249,7 +249,7 @@ async def ai_install(request: Request):
                         ev = json.loads(raw.decode("utf-8", errors="ignore"))
                         if ev.get("error"):
                             raise RuntimeError(ev["error"])
-                        tot, comp = ev.get("total") or 0, ev.get("completed") or 0
+                        tot, comp = float(ev.get("total") or 0), float(ev.get("completed") or 0)
                         status = ev.get("status", "downloading")
                         if tot > 0:
                             if start_bytes is None:
