@@ -92,10 +92,29 @@
           <label>Database <span title="TMDB for Movies/TV, TVmaze for TV (no key), MusicBrainz for Concerts (no key)" onmousedown="event.preventDefault();event.stopPropagation();" onclick="event.preventDefault();event.stopPropagation();const b=document.getElementById('tip-box');b.innerText='💡 '+this.title;b.classList.remove('hidden');" style="cursor:pointer;color:#38bdf8;font-weight:bold;padding:0 4px;">[?]</span> <select id="cfg-PRIMARY_DB" style="width:100%;"><option value="tmdb">TMDB (Movies & TV)</option><option value="tvmaze">TVmaze (TV Shows - Free)</option><option value="musicbrainz">MusicBrainz (Concerts - Free)</option></select></label>
           <label>TMDB Bearer Token <input type="password" id="cfg-TMDB_TOKEN" style="width:100%;"></label>
           <label>AI Provider <span title="Local Ollama uses 0 MB RAM until an unmatched disc triggers it" onmousedown="event.preventDefault();event.stopPropagation();" onclick="event.preventDefault();event.stopPropagation();const b=document.getElementById('tip-box');b.innerText='💡 '+this.title;b.classList.remove('hidden');" style="cursor:pointer;color:#38bdf8;font-weight:bold;padding:0 4px;">[?]</span> <select id="cfg-AI_PROVIDER" style="width:100%;"><option value="local_ollama">On-Demand Local Ollama (0 Idle RAM)</option><option value="gemini">Google Gemini API</option></select></label>
-          <label>Local AI Vision Model (Ollama) <select id="cfg-LOCAL_AI_MODEL" style="width:100%;"><option value="gemma3:4b">gemma3:4b (Recommended - Pan &amp; Scan OCR/Faces, ~3.3 GB)</option><option value="qwen2.5vl:3b">qwen2.5vl:3b (Dynamic Faces &amp; Text, ~3.2 GB)</option><option value="moondream">moondream (Ultra-Light 1.8B, ~1.7 GB)</option></select></label>
-        <label>Secondary Audit AI Model (Second Opinion) <select id="cfg-SECONDARY_AI_MODEL" style="width:100%;"><option value="moondream">moondream (Default Second Opinion — Ultra-Light 1.8B, ~1.7 GB)</option><option value="qwen2.5vl:3b">qwen2.5vl:3b (Dynamic Faces &amp; Text, ~3.2 GB)</option><option value="gemma3:4b">gemma3:4b (High-Res Pan &amp; Scan OCR/Faces, ~3.3 GB)</option><option value="none">None (Disable Second-Opinion Audit)</option></select></label>
+      <label>Local AI Vision Model (Ollama) <select id="cfg-LOCAL_AI_MODEL" style="width:100%;">
+        <option value="moondream" data-min-ram="3.5" data-min-cpu="2">moondream (1.8B • ~1.7 GB • Min: 4 GB RAM, 2+ CPU — Conservative Abstention)</option>
+        <option value="qwen2.5vl:3b" data-min-ram="5.5" data-min-cpu="4">qwen2.5vl:3b (3B • ~3.2 GB • Min: 6 GB RAM, 4+ CPU — Sharp OCR &amp; Title Cards)</option>
+        <option value="gemma3:4b" data-min-ram="7.0" data-min-cpu="4">gemma3:4b (4B • ~3.3 GB • Min: 8 GB RAM, 4+ CPU — Faces, Covers &amp; Scenes)</option>
+        <option value="minicpm-v:8b" data-min-ram="10.5" data-min-cpu="6">minicpm-v:8b (8B • ~5.5 GB • Min: 12 GB RAM, 6+ CPU — Dense OCR &amp; Posters)</option>
+        <option value="qwen2.5vl:7b" data-min-ram="11.0" data-min-cpu="6">qwen2.5vl:7b (7B • ~6.0 GB • Min: 12 GB RAM, 6+ CPU — High-Precision OCR)</option>
+        <option value="llama3.2-vision:11b" data-min-ram="14.5" data-min-cpu="6">llama3.2-vision:11b (11B • ~7.9 GB • Min: 16 GB RAM, 6+ CPU — High-Accuracy Vision)</option>
+        <option value="gemma3:12b" data-min-ram="15.0" data-min-cpu="8">gemma3:12b (12B • ~8.1 GB • Min: 16 GB RAM, 8+ CPU — Heavy Multi-Frame)</option>
+        <option value="gemma3:27b" data-min-ram="28.0" data-min-cpu="8">gemma3:27b (27B • ~17 GB • Min: 32 GB RAM, 8+ CPU — Workstation Vision)</option>
+      </select></label>
+      <label>Secondary Audit AI Model (2-of-4 Second Opinion) <select id="cfg-SECONDARY_AI_MODEL" style="width:100%;">
+        <option value="moondream" data-min-ram="3.5" data-min-cpu="2">moondream (1.8B • ~1.7 GB • Min: 4 GB RAM, 2+ CPU — Conservative Abstention)</option>
+        <option value="qwen2.5vl:3b" data-min-ram="5.5" data-min-cpu="4">qwen2.5vl:3b (3B • ~3.2 GB • Min: 6 GB RAM, 4+ CPU — Sharp OCR &amp; Title Cards)</option>
+        <option value="gemma3:4b" data-min-ram="7.0" data-min-cpu="4">gemma3:4b (4B • ~3.3 GB • Min: 8 GB RAM, 4+ CPU — Faces, Covers &amp; Scenes)</option>
+        <option value="minicpm-v:8b" data-min-ram="10.5" data-min-cpu="6">minicpm-v:8b (8B • ~5.5 GB • Min: 12 GB RAM, 6+ CPU — Dense OCR &amp; Posters)</option>
+        <option value="qwen2.5vl:7b" data-min-ram="11.0" data-min-cpu="6">qwen2.5vl:7b (7B • ~6.0 GB • Min: 12 GB RAM, 6+ CPU — High-Precision OCR)</option>
+        <option value="llama3.2-vision:11b" data-min-ram="14.5" data-min-cpu="6">llama3.2-vision:11b (11B • ~7.9 GB • Min: 16 GB RAM, 6+ CPU — High-Accuracy Vision)</option>
+        <option value="gemma3:12b" data-min-ram="15.0" data-min-cpu="8">gemma3:12b (12B • ~8.1 GB • Min: 16 GB RAM, 8+ CPU — Heavy Multi-Frame)</option>
+        <option value="gemma3:27b" data-min-ram="28.0" data-min-cpu="8">gemma3:27b (27B • ~17 GB • Min: 32 GB RAM, 8+ CPU — Workstation Vision)</option>
+        <option value="none" data-min-ram="0" data-min-cpu="0">None (Disable Second-Opinion Audit)</option>
+      </select></label>
         <label>Cloud AI Key <input type="password" id="cfg-AI_API_KEY" style="width:100%;"></label>
-          <button type="button" onclick="installAI()" style="background:#4f46e5;">Install Selected Local AI Model</button><div id="ai-status-badge" style="font-size:11px;color:#38bdf8;margin-top:6px;">Checking local AI models...</div><div id="ai-msg" style="font-size:11px;color:#94a3b8;margin-top:2px;"></div>
+      <button type="button" onclick="installAI()" style="background:#4f46e5;">Install Selected Local AI Models</button><div id="ai-hw-badge" style="font-size:11px;color:#94a3b8;margin-top:6px;">Detecting host RAM &amp; CPU...</div><div id="ai-status-badge" style="font-size:11px;color:#38bdf8;margin-top:3px;">Checking local AI models...</div><div id="ai-msg" style="font-size:11px;color:#94a3b8;margin-top:2px;"></div>
         </div>
         <div style="background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:16px;">
           <div style="font-weight:700;color:#38bdf8;margin-bottom:10px;">2. Filters, Schedule & Hardware</div>
@@ -147,6 +166,16 @@
       document.getElementById('hb-pct').innerText = r.hb_progress + '%';
       document.getElementById('hb-bar').style.width = r.hb_progress + '%';
       document.querySelectorAll('#cfg-GPU_ACCEL option').forEach(o => { const ok = r.hardware.available_gpus.includes(o.value); o.disabled = !ok; if (!ok && !o.text.includes('(Not Detected)')) o.text += ' (Not Detected)'; });
+      const hostRam = Number(r.hardware.ram_gb || 0), hostCpu = Number(r.hardware.cpu_cores || 0);
+      const hwBadge = document.getElementById('ai-hw-badge');
+      if (hwBadge && hostRam > 0) hwBadge.innerText = `Host Hardware: ${hostRam} GB RAM • ${hostCpu} CPU Threads (incompatible models grayed out)`;
+      document.querySelectorAll('#cfg-LOCAL_AI_MODEL option, #cfg-SECONDARY_AI_MODEL option').forEach(o => {
+        const reqRam = Number(o.dataset.minRam || 0), reqCpu = Number(o.dataset.minCpu || 0);
+        const ok = (hostRam <= 0 || hostRam >= reqRam) && (hostCpu <= 0 || hostCpu >= reqCpu);
+        o.disabled = !ok;
+        o.style.color = ok ? '' : '#64748b';
+        if (!ok && !o.text.includes('(Exceeds Host RAM/CPU)')) o.text += ' (Exceeds Host RAM/CPU)';
+      });
       const aiBadge = document.getElementById('ai-status-badge'); if (aiBadge) aiBadge.innerText = r.ai_models.length ? 'Installed Local AI: ' + r.ai_models.join(', ') : 'Status: No Local AI Installed';
       document.getElementById('svc-status').innerText = Object.entries(r.containers).map(([k,v]) => `${k}: ${v}`).join(' | ');
       document.getElementById('queue-counts').innerHTML = Object.entries(r.counts).map(([k,v]) => `<div style="padding:8px;background:#1e293b;border-radius:6px;"><div style="font-size:16px;font-weight:bold;color:#fff;">${v}</div><div style="font-size:10px;color:#94a3b8;">${k}</div></div>`).join('');
@@ -158,7 +187,7 @@
     function toggleDrivesInput() { const seq = document.getElementById('cfg-DRIVE_MODE').value === 'sequential'; const inp = document.getElementById('cfg-MAX_CONCURRENT_DRIVES'); inp.disabled = seq; document.getElementById('lbl-max-drives').style.opacity = seq ? '0.45' : '1'; }
     async function loadSetup() { const c = await (await fetch('/api/config')).json(); Object.entries(c).forEach(([k,v]) => { const el = document.getElementById('cfg-'+k); if (!el) return; el.type === 'checkbox' ? el.checked = (v === 'true') : el.value = v; if (k === 'MAX_CPU_PERCENT') document.getElementById('cpu-slider-val').innerText = v + '%'; }); toggleDrivesInput(); }
     async function saveSetup() { const out = {}; document.querySelectorAll('[id^="cfg-"]').forEach(el => { out[el.id.replace('cfg-','')] = el.type === 'checkbox' ? String(el.checked) : el.value; }); await fetch('/api/config', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(out)}); alert('Settings saved!'); }
-    async function installAI() { const r = await (await fetch('/api/ai/install', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({model:'moondream'})})).json(); document.getElementById('ai-msg').innerText = r.message; }
+    async function installAI() { const r = await (await fetch('/api/ai/install', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({model: document.getElementById('cfg-LOCAL_AI_MODEL').value, secondary_model: document.getElementById('cfg-SECONDARY_AI_MODEL').value})})).json(); document.getElementById('ai-msg').innerText = r.message; }
     async function loadMedia() { const list = await (await fetch('/api/media/list')).json(); document.getElementById('media-list').innerHTML = list.map(m => `<button onclick="playVid('${m.rel}','${m.name}')" style="display:flex;justify-content:space-between;width:100%;margin-bottom:6px;background:#1e293b;color:#f1f5f9;padding:10px;border-radius:6px;"><span><strong>[${m.folder}]</strong> ${m.name}</span><span>${m.mb} MB</span></button>`).join('') || '<div>No media files found yet.</div>'; }
     function playVid(rel, name) { const v = document.getElementById('vid-player'); v.src = '/api/media/stream?path=' + encodeURIComponent(rel); v.play(); document.getElementById('vid-label').innerText = 'Streaming: ' + name; }
     setInterval(poll, 4000); poll();

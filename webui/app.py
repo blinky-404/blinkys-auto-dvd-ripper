@@ -86,7 +86,9 @@ def detect_hardware():
         gpus += ["qsv", "vaapi"]
     if subprocess.run(["which", "nvidia-smi"], capture_output=True).returncode == 0:
         gpus.append("nvenc")
-    return {"drives": drives, "usb_power_warning": usb_warn, "available_gpus": gpus}
+    return {"drives": drives, "usb_power_warning": usb_warn, "available_gpus": gpus,
+        "ram_gb": round(sum(int(l.split()) for l in open("/proc/meminfo") if l.startswith("MemTotal:")) / (1024 * 1024), 1),
+        "cpu_cores": os.cpu_count() or 1}
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
@@ -199,10 +201,14 @@ async def save_config(request: Request):
 
 @app.post("/api/ai/install")
 async def install_local_ai(request: Request):
-    model = (await request.json()).get("model", "gemma3:4b")
-    cmd = f"docker rm -f ripper-ai-vision >/dev/null 2>&1; docker run -d --name ripper-ai-vision -p 127.0.0.1:11434:11434 -v {SYSTEM_DIR}/ollama:/root/.ollama ollama/ollama:latest && sleep 3 && docker exec ripper-ai-vision ollama pull {model} && docker stop ripper-ai-vision"
+    data = await request.json()
+    m1 = (data.get("model") or "gemma3:4b").strip()
+    m2 = (data.get("secondary_model") or "").strip()
+    models = list(dict.fromkeys([m for m in [m1, m2] if m and m.lower() != "none"]))
+    pulls = " && ".join(f"docker exec ripper-ai-vision ollama pull {m}" for m in models)
+    cmd = f"docker rm -f ripper-ai-vision >/dev/null 2>&1; docker run -d --name ripper-ai-vision -p 127.0.0.1:11434:11434 -v {SYSTEM_DIR}/ollama:/root/.ollama ollama/ollama:latest && sleep 3 && {pulls} && docker stop ripper-ai-vision"
     subprocess.Popen(["bash", "-c", cmd])
-    return {"ok": True, "message": f"Pulling {model} in background; container will stop automatically once ready."}
+    return {"ok": True, "message": f"Pulling {', '.join(models)} in background; container will stop automatically once ready."}
 
 def format_eject_banners(lines):
     out, last_ok = [], True
