@@ -286,7 +286,7 @@ def ai_install_status():
 
 def collect_logs():
     import re
-    spam_re = re.compile(r"(Encoding:\s*task|\b\d{1,3}(?:\.\d+)?\s*%|PRGV:|PRGC:|PRGT:|Saving\s+\d+\s+titles)", re.I)
+    spam_re = re.compile(r"(Encoding:\s*task|\b\d{1,3}(?:\.\d+)?\s*%|PRGV:|PRGC:|PRGT:|Saving\s+\d+\s+titles|xvnc|EncodeManager|VNCSConnST|SConnection|vnc\.sock)", re.I)
     def _filter_lines(lines, n=100):
         out = []
         for line in lines:
