@@ -225,7 +225,7 @@ async def ai_install(request: Request):
             res = docker_sock("POST", "/containers/create?name=ripper-ai-vision", body=create_body)
             if "No such image" in res:
                 save(True, 1, "Pulling ollama/ollama:latest engine image (first-time setup)...")
-                docker_sock("POST", "/images/create?fromImage=ollama/ollama&tag=latest")
+                docker_sock("POST", "/images/create?fromImage=ollama/ollama&tag=latest", timeout=1800)
                 res = docker_sock("POST", "/containers/create?name=ripper-ai-vision", body=create_body)
             docker_sock("POST", "/containers/ripper-ai-vision/start")
 
