@@ -209,6 +209,7 @@ async def ai_install(request: Request):
     os.makedirs(os.path.dirname(state_file), exist_ok=True)
 
     def _run_pull():
+        import urllib.request
         def save(active, pct, text):
             with open(state_file, "w") as f:
                 json.dump({"active": active, "pct": pct, "text": text}, f)
