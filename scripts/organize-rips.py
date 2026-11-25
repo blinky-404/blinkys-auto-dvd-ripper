@@ -361,6 +361,7 @@ def process_finished():
     if not files:
         log("Organizer check complete: No new files in finished/.")
         return
+
     for fpath in sorted(files):
         matched = None
         if time.time() - os.path.getmtime(fpath) < 20:
@@ -373,24 +374,27 @@ def process_finished():
                 af.write(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {fname} -> Audio Streams: {atracks}\n")
         except Exception:
             pass
+
         if os.path.abspath(os.path.dirname(fpath)) == os.path.abspath(hold_dir) and current_cpu_pct() >= 70.0:
             continue
+
         log(f"Processing: {fname}")
         info = probe_media(fpath)
         if not info:
             log(f"   -> ERROR: Could not read streams for {fname}; skipping.")
             continue
+
         stem, ext = os.path.splitext(fname)
         if not info["a_codecs"] and CFG.get("ENABLE_SILENT_QUARANTINE") == "true":
             shutil.move(fpath, os.path.join(MEDIA_DIR, "no_audio", f"{stem}_NO_AUDIO{ext}"))
-            log("   -> QUARANTINED to no_audio/ (0 audio streams)")
+            log(f"   -> QUARANTINED to no_audio/ (0 audio tracks)")
             continue
+
         min_mins = float(CFG.get("MIN_RUNTIME_MINS", 45))
         is_short = (CFG.get("ENABLE_RUNTIME_CHECK") == "true" and info["duration_mins"] < min_mins)
-        matched = None
-        mode = CFG.get("IDENTIFY_MODE", "db_then_ai")
+        mode = CFG.get("IDENTIFY_MODE", "db_then_ai").strip()
         raw_title = resolve_source_title(fpath, fname)
-        query = re.sub(r"(\s*\(\d{4}\)|\s*\(Unmatched\)|_SHORT_\d+m|\b(special|director.?s|extended|unrated|widescreen|fullscreen|collector.?s|anniversary|remastered|deluxe|theatrical|blu-?ray|dvd)\s*(edition|cut|version)?\b|\bt\d+\b|\b[A-Z]\d+\b)", "", clean_disc_name(raw_title), flags=re.I).strip()
+        query = re.sub(r"(\s*\(\d{4}\))|\s*\(Unmatched\)|_SHORT_\d+m|\b(special|director.?s|extended|unrated|widescreen|fullscreen|collector.?s|anniversary|remastered|deluxe|theatrical|blu-?ray|dvd)\s*(edition|cut|version)?\b|\bt\d+\b|[A-Z]\d+\b)", "", clean_disc_name(raw_title), flags=re.I).strip()
         if " - " in raw_title:
             p_left, p_right = [x.strip() for x in raw_title.split(" - ", 1)]
             n_left = re.sub(r"[^a-z0-9]", "", p_left.lower())
@@ -398,108 +402,122 @@ def process_finished():
             if n_left and n_right.startswith(n_left):
                 query = re.sub(r'(?i)[-_\s]*(?:[A-Z]\d+_)?[tT]\d+$', '', p_right).replace("_", " ").strip()
         query = re.sub(r'(?<=[A-Za-z])[0-9A-F]{4}$', '', query).strip()
-        if len(query) <= 3 or query.lower() in ("unidentified", "unknown", "untitled", "disc", "dvd", "movie", "video", "main"): query = ""
-        mode = CFG.get("IDENTIFY_MODE", "db_then_ai").strip()
+        if len(query) <= 3 or query.lower() in ("unidentified", "unknown", "untitled", "disc", "dvd", "movie", "video", "main"):
+            query = ""
+
         actual_mins = info["duration_secs"] / 60.0
         factors_log = []
         tmdb_candidate = query_database(query, info.get("duration_mins", 0)) if mode in ("db_only", "db_then_ai") and query and query.upper() not in ("DVD VIDEO", "DISC 1", "DISC 2", "VIDEO TS", "MOVIE") else None
+        if not tmdb_candidate and query and CFG.get("TMDB_TOKEN"):
+            url = "/".join(["https:", "", "api.themoviedb.org", "3", "search", "movie"]) + "?include_adult=false&language=en-US&query=" + urllib.parse.quote(query)
+            hits = _http_get_json(url, {"Authorization": "Bearer " + CFG.get("TMDB_TOKEN"), "Accept": "application/json"}, 8).get("results", [])
+            q_norm = re.sub(r"[^a-z0-9]", "", query.lower())
+            for h in hits[:5]:
+                t_norm = re.sub(r"[^a-z0-9]", "", (h.get("title") or "").lower())
+                if q_norm and (t_norm == q_norm or t_norm.startswith(q_norm)):
+                    rt = _tmdb_runtime_mins("movie", h.get("id"), CFG.get("TMDB_TOKEN"))
+                    if rt and abs(rt - actual_mins) <= 4.0:
+                        yr = (h.get("release_date") or "")[:4]
+                        tmdb_candidate = f"{h.get('title')} ({yr})" if yr else h.get("title")
+                        break
         if tmdb_candidate:
-        factors_log.append(f"TMDB='{tmdb_candidate}'")
-        c_yr_m = re.search(r"\((\d{4})\)", tmdb_candidate)
-        c_yr = c_yr_m.group(1) if c_yr_m else None
-        c_rt = get_tmdb_runtime(tmdb_candidate, c_yr, CFG.get("TMDB_TOKEN"))
-        if actual_mins < 45 or (c_rt is not None and abs(c_rt - actual_mins) <= 4.0):
-            factors_log.append(f"Runtime=OK({c_rt}m~{actual_mins:.0f}m)")
-            matched = tmdb_candidate
-            log(f"   -> 2-of-4 CONFIRMED ({', '.join(factors_log)}) -> '{matched}'")
-        else:
-            factors_log.append(f"Runtime=MISMATCH({c_rt}m!={actual_mins:.0f}m)")
+            factors_log.append(f"TMDB='{tmdb_candidate}'")
+            c_yr_m = re.search(r"\((\d{4})\)", tmdb_candidate)
+            c_yr = c_yr_m.group(1) if c_yr_m else None
+            c_rt = get_tmdb_runtime(tmdb_candidate, c_yr, CFG.get("TMDB_TOKEN"))
+            if actual_mins < 45 or (c_rt is not None and abs(c_rt - actual_mins) <= 4.0):
+                factors_log.append(f"Runtime=OK({c_rt}m~{actual_mins:.0f}m)")
+                matched = tmdb_candidate
+                log(f"   -> 2-of-4 CONFIRMED ({', '.join(factors_log)}) -> '{matched}'")
+            else:
+                factors_log.append(f"Runtime=MISMATCH({c_rt}m!={actual_mins:.0f}m)")
 
         tmp_snap, has_snap = f"/tmp/grid_{int(time.time()*1000)}.jpg", False
         if not matched and mode in ("ai_only", "db_then_ai"):
-        cpu_now = current_cpu_pct()
-        if cpu_now >= 70.0:
-            hold_dir = os.path.join(MEDIA_DIR, "ai_hold")
-            os.makedirs(hold_dir, exist_ok=True)
-            dest_hold = os.path.join(hold_dir, fname)
-            if os.path.abspath(fpath) != os.path.abspath(dest_hold):
-                shutil.move(fpath, dest_hold)
-                log(f"   -> CPU load at {cpu_now}% (>= 70%); parked in ai_hold/ until CPU is below 70%.")
-            return
+            cpu_now = current_cpu_pct()
+            if cpu_now >= 70.0:
+                dest_hold = os.path.join(hold_dir, fname)
+                if os.path.abspath(fpath) != os.path.abspath(dest_hold):
+                    shutil.move(fpath, dest_hold)
+                    log(f"   -> CPU load at {cpu_now}% (>= 70%); parked in ai_hold/ until CPU is below 70%.")
+                return
 
-        ai1_model = CFG.get("LOCAL_AI_MODEL", "gemma3:4b").strip()
-        ai2_model = pick_secondary_ollama_model(ai1_model) or CFG.get("SECONDARY_AI_MODEL", "").strip()
-        votes = {}
-        if tmdb_candidate:
-            votes[tmdb_candidate] = ["TMDB"]
+            ai1_model = CFG.get("LOCAL_AI_MODEL", "gemma3:4b").strip()
+            ai2_model = pick_secondary_ollama_model(ai1_model) or CFG.get("SECONDARY_AI_MODEL", "").strip()
+            votes = {}
+            if tmdb_candidate:
+                votes[tmdb_candidate] = ["TMDB"]
 
-        for m_label, m_name in [("AI1", ai1_model), ("AI2", ai2_model)]:
-            if not m_name or m_name.lower() == "none":
+            for m_label, m_name in [("AI1", ai1_model), ("AI2", ai2_model)]:
+                if not m_name or m_name.lower() == "none":
+                    continue
+                guess = identify_with_ai(fpath, info["duration_secs"], "/tmp/ai_scans", model_name=m_name)
+                if os.path.exists("/tmp/ai_scans/preview_grid.jpg"):
+                    shutil.copyfile("/tmp/ai_scans/preview_grid.jpg", tmp_snap)
+                    has_snap = True
+                if guess:
+                    clean_guess = re.sub(r"\s*\(\d{4}\)", "", guess).strip()
+                    resolved = query_database(clean_guess, info.get("duration_mins", 0)) or guess
+                    votes.setdefault(resolved, []).append(f"{m_label}:{m_name}")
+                    c_yr_m = re.search(r"\((\d{4})\)", resolved)
+                    c_yr = c_yr_m.group(1) if c_yr_m else None
+                    c_rt = get_tmdb_runtime(resolved, c_yr, CFG.get("TMDB_TOKEN"))
+                    if c_rt is not None and abs(c_rt - actual_mins) <= 4.0 and "Runtime" not in votes[resolved]:
+                        votes[resolved].append(f"Runtime({c_rt}m)")
+
+            best_title, best_factors = None, []
+            for cand, flist in votes.items():
+                if len(flist) > len(best_factors):
+                    best_title, best_factors = cand, flist
+            if best_title and len(best_factors) >= 2:
+                matched = best_title
+                log(f"   -> 2-of-4 CONFIRMED ({len(best_factors)}/4: {', '.join(best_factors)}) -> '{matched}'")
+            else:
+                summary = "; ".join(f"{k}:[{','.join(v)}]" for k, v in votes.items()) or "no votes"
+                log(f"   -> 2-of-4 NOT MET ({summary}); routing to (Unmatched) to prevent mislabeling.")
+
+        if not matched:
+            fallback_label = re.sub(r'[\\/:*?"<>|]', '', (query or stem)).strip() or "Unknown_Disc"
+            matched = f"{fallback_label} (Unmatched)"
+
+        safe = re.sub(r'[\\/:*?"<>|]', '', matched).strip()
+        is_low, reasons = False, []
+        if CFG.get("ENABLE_QUALITY_SORT") == "true":
+            if info["height"] < int(CFG.get("MIN_VIDEO_HEIGHT", 300)):
+                is_low, reasons = True, reasons + [f"Height {info['height']}p"]
+            if 0 < info["bitrate_kbps"] < int(CFG.get("MIN_VIDEO_BITRATE_KBPS", 400)):
+                is_low, reasons = True, reasons + [f"Bitrate {info['bitrate_kbps']}kbps"]
+
+        base_bucket = "short_videos" if is_short else ("low_quality_quarantine" if is_low else "organized_movies")
+        dest_dir = os.path.join(MEDIA_DIR, base_bucket, safe)
+        os.makedirs(dest_dir, exist_ok=True)
+        shutil.move(fpath, os.path.join(dest_dir, f"{safe} - Extra ({info['duration_mins']}m){ext}" if is_short else f"{safe}{ext}"))
+
+        parts = stem.split(" - ", 1)
+        disc_prefix = parts.pop(0).strip() if len(parts) == 2 else ""
+        raw_stem = parts.pop(0).strip() if len(parts) == 2 else stem
+        raw_base = os.path.join(MEDIA_DIR, "raw")
+        for r_root, _, r_files in os.walk(raw_base, topdown=False):
+            if r_root == raw_base:
                 continue
-            guess = identify_with_ai(fpath, info["duration_secs"], "/tmp/ai_scans", model_name=m_name)
-            if os.path.exists("/tmp/ai_scans/preview_grid.jpg"):
-                shutil.copyfile("/tmp/ai_scans/preview_grid.jpg", tmp_snap)
-                has_snap = True
-            if guess:
-                clean_guess = re.sub(r"\s*\(\d{4}\)", "", guess).strip()
-                resolved = query_database(clean_guess, info.get("duration_mins", 0)) or guess
-                votes.setdefault(resolved, []).append(f"{m_label}:{m_name}")
-                c_yr_m = re.search(r"\((\d{4})\)", resolved)
-                c_yr = c_yr_m.group(1) if c_yr_m else None
-                c_rt = get_tmdb_runtime(resolved, c_yr, CFG.get("TMDB_TOKEN"))
-                if c_rt is not None and abs(c_rt - actual_mins) <= 4.0 and "Runtime" not in votes[resolved]:
-                    votes[resolved].append(f"Runtime({c_rt}m)")
+            if disc_prefix and os.path.basename(r_root) != disc_prefix:
+                continue
+            for cand in (f"{stem}.mkv", f"{raw_stem}.mkv"):
+                if cand in r_files:
+                    os.remove(os.path.join(r_root, cand))
+                    log(f"   -> Deleted source MKV: {os.path.basename(r_root)}/{cand}")
+            if not os.listdir(r_root):
+                os.rmdir(r_root)
+                log(f"   -> Removed empty raw folder: {os.path.basename(r_root)}/")
 
-        best_title, best_factors = None, []
-        for cand, flist in votes.items():
-            if len(flist) > len(best_factors):
-                best_title, best_factors = cand, flist
-        if best_title and len(best_factors) >= 2:
-            matched = best_title
-            log(f"   -> 2-of-4 CONFIRMED ({len(best_factors)}/4: {', '.join(best_factors)}) -> '{matched}'")
-        else:
-            summary = "; ".join(f"{k}:[{','.join(v)}]" for k, v in votes.items()) or "no votes"
-            log(f"   -> 2-of-4 NOT MET ({summary}); routing to (Unmatched) to prevent mislabeling.")
+        if has_snap and os.path.exists(tmp_snap):
+            shutil.move(tmp_snap, os.path.join(dest_dir, f"{safe}_AI_preview.jpg"))
+            log(f"   -> Saved AI snapshot grid for review: {safe}_AI_preview.jpg")
+        if CFG.get("SAVE_MOVIE_INFO_TXT") == "true":
+            with open(os.path.join(dest_dir, f"{safe}_info.txt"), "w") as tf:
+                tf.write(f"Title: {safe}\nSource: {fname}\nStatus: {'LOW QUALITY' if is_low else 'FULL QUALITY'}\nResolution: {info['width']}x{info['height']} ({info['v_codec']})\nBitrate: {info['bitrate_kbps']} kbps\nRuntime: {info['duration_mins']} mins\nAudio: {', '.join(info['a_codecs']) or 'NONE'}\n")
+        log(f"   -> Routed to {base_bucket}/{safe}/")
 
-    if not matched:
-        fallback_label = re.sub(r'[\\/:*?"<>|]', '', (query or stem)).strip() or "Unknown_Disc"
-        matched = f"{fallback_label} (Unmatched)"
-    safe = re.sub(r'[\\/:*?"<>|]', '', matched).strip()
-    is_low, reasons = False, []
-    if CFG.get("ENABLE_QUALITY_SORT") == "true":
-        if info["height"] < int(CFG.get("MIN_VIDEO_HEIGHT", 300)):
-            is_low, reasons = True, reasons + [f"Height {info['height']}p"]
-        if 0 < info["bitrate_kbps"] < int(CFG.get("MIN_VIDEO_BITRATE_KBPS", 400)):
-            is_low, reasons = True, reasons + [f"Bitrate {info['bitrate_kbps']}kbps"]
-    base_bucket = "short_videos" if is_short else ("low_quality_quarantine" if is_low else "organized_movies")
-    dest_dir = os.path.join(MEDIA_DIR, base_bucket, safe)
-    os.makedirs(dest_dir, exist_ok=True)
-    shutil.move(fpath, os.path.join(dest_dir, f"{safe} - Extra ({info['duration_mins']}m){ext}" if is_short else f"{safe}{ext}"))
-    parts = stem.split(" - ", 1)
-    disc_prefix = parts[0].strip() if len(parts) == 2 else ""
-    raw_stem = parts[1].strip() if len(parts) == 2 else stem
-    raw_base = os.path.join(MEDIA_DIR, "raw")
-    for r_root, _, r_files in os.walk(raw_base, topdown=False):
-        if r_root == raw_base:
-            continue
-        if disc_prefix and os.path.basename(r_root) != disc_prefix:
-            continue
-        for cand in (f"{stem}.mkv", f"{raw_stem}.mkv"):
-            if cand in r_files:
-                os.remove(os.path.join(r_root, cand))
-                log(f"   -> Deleted source MKV: {os.path.basename(r_root)}/{cand}")
-        if not os.listdir(r_root):
-            os.rmdir(r_root)
-            log(f"   -> Removed empty raw folder: {os.path.basename(r_root)}/")
-    if has_snap and os.path.exists(tmp_snap):
-        shutil.move(tmp_snap, os.path.join(dest_dir, f"{safe}_AI_preview.jpg"))
-        log(f"   -> Saved AI snapshot grid for review: {safe}_AI_preview.jpg")
-    if CFG.get("SAVE_MOVIE_INFO_TXT") == "true":
-        with open(os.path.join(dest_dir, f"{safe}_info.txt"), "w") as tf:
-            tf.write(f"Title: {safe}\nSource: {fname}\nStatus: {'LOW QUALITY' if is_low else 'FULL QUALITY'}\nResolution: {info['width']}x{info['height']} ({info['v_codec']})\nBitrate: {info['bitrate_kbps']} kbps\nRuntime: {info['duration_mins']} mins\nAudio: {', '.join(info['a_codecs']) or 'NONE'}\n")
-    log(f"   -> Routed to {base_bucket}/{safe}/")
-
-    # Clean up any empty disc folders in raw/ (e.g. failed MakeMKV rips) older than 10 minutes
     raw_root = os.path.join(MEDIA_DIR, "raw")
     now = time.time()
     for entry in os.listdir(raw_root) if os.path.isdir(raw_root) else []:
@@ -512,6 +530,7 @@ def process_finished():
                 log(f"   -> Pruned empty raw folder: {entry}/")
             except OSError:
                 pass
+
 
 if __name__ == "__main__":
     os.makedirs("/tmp", exist_ok=True)
