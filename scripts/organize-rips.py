@@ -399,7 +399,8 @@ def process_finished():
                 query = re.sub(r'(?i)[-_\s]*(?:[A-Z]\d+_)?[tT]\d+$', '', p_right).replace("_", " ").strip()
         query = re.sub(r'(?<=[A-Za-z])[0-9A-F]{4}$', '', query).strip()
         if len(query) <= 3 or query.lower() in ("unidentified", "unknown", "untitled", "disc", "dvd", "movie", "video", "main"): query = ""
-        actual_mins = info["duration_secs"] / 60.0
+        mode = CFG.get("IDENTIFY_MODE", "db_then_ai").strip()
+    actual_mins = info["duration_secs"] / 60.0
     factors_log = []
     tmdb_candidate = query_database(query, info.get("duration_mins", 0)) if mode in ("db_only", "db_then_ai") and query and query.upper() not in ("DVD VIDEO", "DISC 1", "DISC 2", "VIDEO TS", "MOVIE") else None
     if tmdb_candidate:
