@@ -87,7 +87,7 @@ def detect_hardware():
     if subprocess.run(["which", "nvidia-smi"], capture_output=True).returncode == 0:
         gpus.append("nvenc")
     return {"drives": drives, "usb_power_warning": usb_warn, "available_gpus": gpus,
-        "ram_gb": round(sum(int(l.split()) for l in open("/proc/meminfo") if l.startswith("MemTotal:")) / (1024 * 1024), 1),
+        "ram_gb": round(sum(int(l.split().pop(1)) for l in open("/proc/meminfo") if l.startswith("MemTotal:")) / (1024 * 1024), 1),
         "cpu_cores": os.cpu_count() or 1}
 
 @app.get("/", response_class=HTMLResponse)
