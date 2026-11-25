@@ -3,7 +3,7 @@ CONVERSION_STATUS="$1"
 OUTPUT_FILE="$2"
 SOURCE_FILE="$3"
 
-if [ "$CONVERSION_STATUS" = "0" ] && [ -n "$OUTPUT_FILE" ] && [ -f "$OUTPUT_FILE" ]; then
+if [ "$CONVERSION_STATUS" = "0" ] && [ -n "$OUTPUT_FILE" ] && [ -s "$OUTPUT_FILE" ]; then
   RAW_PARENT=$(basename "$(dirname "$SOURCE_FILE")")
   PARENT_DIR=$(echo "$RAW_PARENT" | tr -cd '[:alnum:] ._-' | sed 's/^ *//;s/ *$//')
   LOWER_DIR=$(echo "$PARENT_DIR" | tr '[:upper:]' '[:lower:]' | tr -d ' _-')
@@ -23,6 +23,14 @@ if [ "$CONVERSION_STATUS" = "0" ] && [ -n "$OUTPUT_FILE" ] && [ -f "$OUTPUT_FILE
       esac
       ;;
   esac
+
+  if [ -n "$SOURCE_FILE" ] && [ -f "$SOURCE_FILE" ]; then
+    SRC_DIR=$(dirname "$SOURCE_FILE")
+    rm -f "$SOURCE_FILE" && echo "[post_conversion] Deleted source MKV: $SOURCE_FILE"
+    if [ "$SRC_DIR" != "/watch" ] && [ -d "$SRC_DIR" ]; then
+      rmdir "$SRC_DIR" 2>/dev/null && echo "[post_conversion] Removed empty disc folder: $SRC_DIR"
+    fi
+  fi
 
   TRIGGER="/output/.trigger_organizer"
   touch "$TRIGGER"
