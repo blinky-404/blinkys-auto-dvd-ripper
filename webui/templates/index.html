@@ -114,7 +114,7 @@
         <option value="none" data-min-ram="0" data-min-cpu="0">None (Disable Second-Opinion Audit)</option>
       </select></label>
         <label>Cloud AI Key <input type="password" id="cfg-AI_API_KEY" style="width:100%;"></label>
-      <button type="button" onclick="installAI()" style="background:#4f46e5;">Install Selected Local AI Models</button><div id="ai-hw-badge" style="font-size:11px;color:#94a3b8;margin-top:6px;">Detecting host RAM &amp; CPU...</div><div id="ai-status-badge" style="font-size:11px;color:#38bdf8;margin-top:3px;">Checking local AI models...</div><div id="ai-msg" style="font-size:11px;color:#94a3b8;margin-top:2px;"></div>
+      <button type="button" onclick="installAI()" style="background:#4f46e5;">Install Selected Local AI Models</button><div id="ai-hw-badge" style="font-size:11px;color:#94a3b8;margin-top:6px;">Detecting host RAM &amp; CPU...</div><div id="ai-status-badge" style="font-size:11px;color:#38bdf8;margin-top:3px;">Checking local AI models...</div><div id="ai-prog-wrap" class="hidden" style="margin-top:6px;background:#0f172a;border:1px solid #334155;border-radius:6px;overflow:hidden;height:14px;"><div id="ai-prog-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#4f46e5,#38bdf8);transition:width 0.4s ease;"></div></div><div id="ai-msg" style="font-size:11px;color:#cbd5e1;margin-top:4px;"></div>
         </div>
         <div style="background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:16px;">
           <div style="font-weight:700;color:#38bdf8;margin-bottom:10px;">2. Filters, Schedule & Hardware</div>
@@ -187,10 +187,36 @@
     function toggleDrivesInput() { const seq = document.getElementById('cfg-DRIVE_MODE').value === 'sequential'; const inp = document.getElementById('cfg-MAX_CONCURRENT_DRIVES'); inp.disabled = seq; document.getElementById('lbl-max-drives').style.opacity = seq ? '0.45' : '1'; }
     async function loadSetup() { const c = await (await fetch('/api/config')).json(); Object.entries(c).forEach(([k,v]) => { const el = document.getElementById('cfg-'+k); if (!el) return; el.type === 'checkbox' ? el.checked = (v === 'true') : el.value = v; if (k === 'MAX_CPU_PERCENT') document.getElementById('cpu-slider-val').innerText = v + '%'; }); toggleDrivesInput(); }
     async function saveSetup() { const out = {}; document.querySelectorAll('[id^="cfg-"]').forEach(el => { out[el.id.replace('cfg-','')] = el.type === 'checkbox' ? String(el.checked) : el.value; }); await fetch('/api/config', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(out)}); alert('Settings saved!'); }
-    async function installAI() { const r = await (await fetch('/api/ai/install', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({model: document.getElementById('cfg-LOCAL_AI_MODEL').value, secondary_model: document.getElementById('cfg-SECONDARY_AI_MODEL').value})})).json(); document.getElementById('ai-msg').innerText = r.message; }
+    let aiPollTimer = null;
+    async function pollAIInstall() {
+      try {
+        const s = await (await fetch('/api/ai/install-status')).json();
+        const wrap = document.getElementById('ai-prog-wrap');
+        const bar = document.getElementById('ai-prog-bar');
+        const msg = document.getElementById('ai-msg');
+        if (!s.text && !s.active) return;
+        wrap.classList.remove('hidden');
+        bar.style.width = (s.pct || 0) + '%';
+        msg.innerText = s.text || '';
+        if (s.active && !aiPollTimer) {
+          aiPollTimer = setInterval(pollAIInstall, 1000);
+        } else if (!s.active && aiPollTimer) {
+          clearInterval(aiPollTimer);
+          aiPollTimer = null;
+          poll();
+        }
+      } catch (e) {}
+    }
+    async function installAI() {
+      const r = await (await fetch('/api/ai/install', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({model: document.getElementById('cfg-LOCAL_AI_MODEL').value, secondary_model: document.getElementById('cfg-SECONDARY_AI_MODEL').value})})).json();
+      document.getElementById('ai-prog-wrap').classList.remove('hidden');
+      document.getElementById('ai-prog-bar').style.width = '2%';
+      document.getElementById('ai-msg').innerText = r.message;
+      if (!aiPollTimer) aiPollTimer = setInterval(pollAIInstall, 1000);
+    }
     async function loadMedia() { const list = await (await fetch('/api/media/list')).json(); document.getElementById('media-list').innerHTML = list.map(m => `<button onclick="playVid('${m.rel}','${m.name}')" style="display:flex;justify-content:space-between;width:100%;margin-bottom:6px;background:#1e293b;color:#f1f5f9;padding:10px;border-radius:6px;"><span><strong>[${m.folder}]</strong> ${m.name}</span><span>${m.mb} MB</span></button>`).join('') || '<div>No media files found yet.</div>'; }
     function playVid(rel, name) { const v = document.getElementById('vid-player'); v.src = '/api/media/stream?path=' + encodeURIComponent(rel); v.play(); document.getElementById('vid-label').innerText = 'Streaming: ' + name; }
-    setInterval(poll, 4000); poll();
+    setInterval(poll, 4000); poll(); pollAIInstall();
   
 async function pollActionStatus() {
   try {

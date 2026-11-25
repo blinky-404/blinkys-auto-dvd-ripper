@@ -200,44 +200,77 @@ async def save_config(request: Request):
     return {"ok": True}
 
 @app.post("/api/ai/install")
-async def install_local_ai(request: Request):
+async def ai_install(request: Request):
     data = await request.json()
     m1 = (data.get("model") or "gemma3:4b").strip()
     m2 = (data.get("secondary_model") or "").strip()
     models = list(dict.fromkeys([m for m in [m1, m2] if m and m.lower() != "none"]))
-    pulls = " && ".join(f"docker exec ripper-ai-vision ollama pull {m}" for m in models)
-    cmd = f"docker rm -f ripper-ai-vision >/dev/null 2>&1; docker run -d --name ripper-ai-vision -p 127.0.0.1:11434:11434 -v {SYSTEM_DIR}/ollama:/root/.ollama ollama/ollama:latest && sleep 3 && {pulls} && docker stop ripper-ai-vision"
-    subprocess.Popen(["bash", "-c", cmd])
-    return {"ok": True, "message": f"Pulling {', '.join(models)} in background; container will stop automatically once ready."}
+    state_file = os.path.join(SYSTEM_DIR, "logs", "ai_install.json")
+    os.makedirs(os.path.dirname(state_file), exist_ok=True)
+    with open(state_file, "w") as f:
+        json.dump({"active": True, "pct": 0, "text": f"Starting Ollama container for {', '.join(models)}..."}, f)
 
-def format_eject_banners(lines):
-    out, last_ok = [], True
-    for l in lines:
-        if "Disc rip terminated successfully" in l: last_ok = True
-        elif "Disc rip terminated with failure" in l: last_ok = False
-        if "Ejecting disc from" in l:
-            tag = "[EJECTED - SUCCESS]" if last_ok else "[EJECTED - FAILED]"
-            out.append(f"=== {tag} {l.split(']')[-1].strip()} ===")
-        else:
-            out.append(l)
-    return out
+    worker = f"""
+import json, subprocess, time, urllib.request
+models = {repr(models)}
+state_file = {repr(state_file)}
+def save(active, pct, text):
+    with open(state_file, "w") as f:
+        json.dump({{"active": active, "pct": pct, "text": text}}, f)
 
-def clean_progress_spam(lines):
-    is_prog = lambda l: ("Current progress -" in l) or ("Encoding " in l and "task " in l) or ("fps, avg " in l and "ETA " in l)
-    kept = [l for l in lines if not is_prog(l)]
-    prog = [l for l in lines if is_prog(l)]
-    if prog:
-        kept.append("--- Latest Progress: " + " ".join(p.strip() for p in prog[-2:]) + " ---")
-    return kept[-80:]
+try:
+    subprocess.run(["bash", "-c", "docker rm -f ripper-ai-vision >/dev/null 2>&1; docker run -d --name ripper-ai-vision -p 127.0.0.1:11434:11434 -v {SYSTEM_DIR}/ollama:/root/.ollama ollama/ollama:latest"], check=True)
+    for _ in range(25):
+        try:
+            urllib.request.urlopen("http://127.0.0", timeout=1)
+            break
+        except Exception:
+            time.sleep(1)
 
-def collect_logs():
-    mk_raw = docker_sock("GET", "/containers/makemkv/logs?stdout=1&stderr=1&tail=1000")
-    mk_filt = "\n".join(clean_progress_spam(format_eject_banners([l for l in mk_raw.splitlines() if re.search(r"(error|fail|sector|hash|title|cell|skip|eject|complete|rip|autodiscripper|disc|backing|detect|finish|saved|start|operation)", l, re.I)])))
-    hb_raw = docker_sock("GET", "/containers/handbrake/logs?stdout=1&stderr=1&tail=150")
-    hb_filt = "\n".join(clean_progress_spam([l for l in hb_raw.splitlines() if re.search(r"(error|fail|encoding|complete|scan|title|fps, avg)", l, re.I)]))
-    aud = open(os.path.join(LOG_DIR, "audio_audit.log")).read() if os.path.exists(os.path.join(LOG_DIR, "audio_audit.log")) else ""
-    org = open(os.path.join(LOG_DIR, "organizer.log")).read() if os.path.exists(os.path.join(LOG_DIR, "organizer.log")) else ""
-    return {"makemkv": mk_filt or "No MakeMKV warnings logged.", "handbrake": hb_filt or "No HandBrake warnings logged.", "audio": aud or "No audio audit entries yet.", "organizer": org or "No organizer logs yet."}
+    for idx, m in enumerate(models):
+        save(True, int((idx / len(models)) * 100), f"Pulling {{m}} ({{idx+1}}/{{len(models)}})...")
+        req = urllib.request.Request("http://127.0.0", data=json.dumps({{"name": m, "stream": True}}).encode(), headers={{"Content-Type": "application/json"}})
+        t0, start_bytes = time.time(), None
+        with urllib.request.urlopen(req, timeout=3600) as resp:
+            for raw in resp:
+                if not raw.strip():
+                    continue
+                ev = json.loads(raw.decode("utf-8", errors="ignore"))
+                if ev.get("error"):
+                    raise RuntimeError(ev["error"])
+                tot, comp = ev.get("total") or 0, ev.get("completed") or 0
+                status = ev.get("status", "downloading")
+                if tot > 0:
+                    if start_bytes is None:
+                        start_bytes, t0 = comp, time.time()
+                    frac = min(1.0, comp / tot)
+                    overall = int(((idx + frac) / len(models)) * 100)
+                    elapsed = max(0.5, time.time() - t0)
+                    spd = max(0.0, (comp - start_bytes) / elapsed)
+                    eta_s = int((tot - comp) / spd) if spd > 1024 else 0
+                    eta_str = f" • ETA {{eta_s // 60}}m {{eta_s % 60:02d}}s" if eta_s > 0 else ""
+                    spd_mb = spd / (1024 * 1024)
+                    save(True, overall, f"Pulling {{m}} ({{idx+1}}/{{len(models)}}): {{int(frac*100)}}% ({{comp/1e9:.2f}} / {{tot/1e9:.2f}} GB • {{spd_mb:.1f}} MB/s{{eta_str}})")
+                else:
+                    save(True, int((idx / len(models)) * 100), f"{{m}} ({{idx+1}}/{{len(models)}}): {{status}}")
+    save(False, 100, f"Installed: {{', '.join(models)}} (0 Idle RAM — container stopped)")
+except Exception as ex:
+    save(False, 0, f"Error installing models: {{ex}}")
+finally:
+    subprocess.run(["docker", "stop", "ripper-ai-vision"], check=False)
+"""
+    subprocess.Popen(["python3", "-c", worker])
+    return {"ok": True, "message": f"Starting download for {', '.join(models)}..."}
+
+@app.get("/api/ai/install-status")
+def ai_install_status():
+    state_file = os.path.join(SYSTEM_DIR, "logs", "ai_install.json")
+    if not os.path.exists(state_file):
+        return {"active": False, "pct": 0, "text": ""}
+    try:
+        return json.load(open(state_file))
+    except Exception:
+        return {"active": False, "pct": 0, "text": ""}
 
 @app.get("/api/logs")
 def get_logs():
