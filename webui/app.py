@@ -222,11 +222,11 @@ async def ai_install(request: Request):
                     "PortBindings": {"11434/tcp": [{"HostIp": "127.0.0.1", "HostPort": "11434"}]}
                 }
             })
-            res = docker_sock("POST", "/containers/create?name=ripper-ai-vision", create_body)
+            res = docker_sock("POST", "/containers/create?name=ripper-ai-vision", body=create_body)
             if "No such image" in res:
                 save(True, 1, "Pulling ollama/ollama:latest engine image (first-time setup)...")
                 docker_sock("POST", "/images/create?fromImage=ollama/ollama&tag=latest")
-                res = docker_sock("POST", "/containers/create?name=ripper-ai-vision", create_body)
+                res = docker_sock("POST", "/containers/create?name=ripper-ai-vision", body=create_body)
             docker_sock("POST", "/containers/ripper-ai-vision/start")
 
             tags_url = "http://127.0.0.1" + ":11434/api/tags"
