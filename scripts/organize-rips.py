@@ -254,7 +254,7 @@ def current_cpu_pct():
     except Exception:
         return 0.0
 
-def identify_with_ai(video_path, duration_secs, out_dir):
+def identify_with_ai(video_path, duration_secs, out_dir, model_name=None):
     provider = CFG.get("AI_PROVIDER", "none")
     if provider == "none":
         return None
@@ -269,7 +269,7 @@ def identify_with_ai(video_path, duration_secs, out_dir):
     ]
     prompt = "Identify the exact movie, TV show, or concert title shown in these video frames (check any title cards, credits, actors, or logos). Reply ONLY with the clean title (and year if known). If completely unrecognizable, reply UNKNOWN."
     obin = "/DATA/ripper_system/ollama/bin/ollama"
-    model = CFG.get("LOCAL_AI_MODEL", "gemma3:4b")
+    model = model_name or CFG.get("LOCAL_AI_MODEL", "gemma3:4b")
     env = dict(os.environ, OLLAMA_MODELS="/DATA/ripper_system/ollama/models", OLLAMA_HOST="127.0.0.1:11434")
     srv = None
     if provider == "local_ollama" and os.path.exists(obin):
@@ -322,10 +322,10 @@ def identify_with_ai(video_path, duration_secs, out_dir):
 
             clean_ans = re.sub(r'[\\/:*?"<>|]', '', ans).strip()
             if clean_ans and not any(bad in clean_ans.upper() for bad in ("UNKNOWN", "UNIDENTIFIED", "NOT SURE", "CANNOT IDENTIFY", "SORRY")):
-                log(f"   -> AI Vision matched '{clean_ans}' after {total_snaps} snapshots!")
+                log(f"   -> AI Vision ({model}) guessed '{clean_ans}' after {total_snaps} snapshots")
                 os.remove(grid_path)
                 return clean_ans
-            log(f"   -> AI Vision pass {b_idx+1}/{len(batches)} ({total_snaps}/30 snapshots) inconclusive, scanning deeper...")
+            log(f"   -> AI Vision ({model}) pass {b_idx+1}/{len(batches)} ({total_snaps}/30 snapshots) inconclusive")
     except Exception as ex:
         log(f"   -> AI Vision error: {ex}")
     finally:
@@ -373,58 +373,67 @@ def process_finished():
                 query = re.sub(r'(?i)[-_\s]*(?:[A-Z]\d+_)?[tT]\d+$', '', p_right).replace("_", " ").strip()
         query = re.sub(r'(?<=[A-Za-z])[0-9A-F]{4}$', '', query).strip()
         if len(query) <= 3 or query.lower() in ("unidentified", "unknown", "untitled", "disc", "dvd", "movie", "video", "main"): query = ""
-        matched = query_database(query, info.get("duration_mins", 0)) if mode in ("db_only", "db_then_ai") and query.upper() not in ("DVD VIDEO", "DISC 1", "DISC 2", "VIDEO TS", "MOVIE") else None
-        tmp_snap, has_snap = f"/tmp/grid_{int(time.time()*1000)}.jpg", False
-        if not matched and mode in ("ai_only", "db_then_ai"):
-            cpu_now = current_cpu_pct()
-            if cpu_now >= 70.0:
-                hold_dir = os.path.join(MEDIA_DIR, "ai_hold")
-                os.makedirs(hold_dir, exist_ok=True)
-                dest_hold = os.path.join(hold_dir, fname)
-                if os.path.abspath(fpath) != os.path.abspath(dest_hold):
-                    shutil.move(fpath, dest_hold)
-                    log(f"   -> CPU load at {cpu_now}% (>= 70%); parked in ai_hold/ until CPU is below 70%.")
-                return
-            guess = identify_with_ai(fpath, info["duration_secs"], "/tmp/ai_scans")
+        actual_mins = info["duration_secs"] / 60.0
+    factors_log = []
+    tmdb_candidate = query_database(query, info.get("duration_mins", 0)) if mode in ("db_only", "db_then_ai") and query and query.upper() not in ("DVD VIDEO", "DISC 1", "DISC 2", "VIDEO TS", "MOVIE") else None
+    if tmdb_candidate:
+        factors_log.append(f"TMDB='{tmdb_candidate}'")
+        c_yr_m = re.search(r"\((\d{4})\)", tmdb_candidate)
+        c_yr = c_yr_m.group(1) if c_yr_m else None
+        c_rt = get_tmdb_runtime(tmdb_candidate, c_yr, CFG.get("TMDB_TOKEN"))
+        if actual_mins < 45 or (c_rt is not None and abs(c_rt - actual_mins) <= 4.0):
+            factors_log.append(f"Runtime=OK({c_rt}m~{actual_mins:.0f}m)")
+            matched = tmdb_candidate
+            log(f"   -> 2-of-4 CONFIRMED ({', '.join(factors_log)}) -> '{matched}'")
+        else:
+            factors_log.append(f"Runtime=MISMATCH({c_rt}m!={actual_mins:.0f}m)")
+
+    tmp_snap, has_snap = f"/tmp/grid_{int(time.time()*1000)}.jpg", False
+    if not matched and mode in ("ai_only", "db_then_ai"):
+        cpu_now = current_cpu_pct()
+        if cpu_now >= 70.0:
+            hold_dir = os.path.join(MEDIA_DIR, "ai_hold")
+            os.makedirs(hold_dir, exist_ok=True)
+            dest_hold = os.path.join(hold_dir, fname)
+            if os.path.abspath(fpath) != os.path.abspath(dest_hold):
+                shutil.move(fpath, dest_hold)
+                log(f"   -> CPU load at {cpu_now}% (>= 70%); parked in ai_hold/ until CPU is below 70%.")
+            return
+
+        ai1_model = CFG.get("LOCAL_AI_MODEL", "gemma3:4b").strip()
+        ai2_model = pick_secondary_ollama_model(ai1_model) or CFG.get("SECONDARY_AI_MODEL", "").strip()
+        votes = {}
+        if tmdb_candidate:
+            votes[tmdb_candidate] = ["TMDB"]
+
+        for m_label, m_name in [("AI1", ai1_model), ("AI2", ai2_model)]:
+            if not m_name or m_name.lower() == "none":
+                continue
+            guess = identify_with_ai(fpath, info["duration_secs"], "/tmp/ai_scans", model_name=m_name)
             if os.path.exists("/tmp/ai_scans/preview_grid.jpg"):
-                shutil.move("/tmp/ai_scans/preview_grid.jpg", tmp_snap)
+                shutil.copyfile("/tmp/ai_scans/preview_grid.jpg", tmp_snap)
                 has_snap = True
             if guess:
-                m_yr = re.search(r"\((\d{4})\)", guess)
                 clean_guess = re.sub(r"\s*\(\d{4}\)", "", guess).strip()
-                cand_matched = query_database(clean_guess, info.get("duration_mins", 0))
-                cand_year = m_yr.group(1) if m_yr else (re.search(r"\((\d{4})\)", cand_matched or "").group(1) if re.search(r"\((\d{4})\)", cand_matched or "") else None)
-                actual_mins = info["duration_secs"] / 60.0
-                tmdb_rt = get_tmdb_runtime(cand_matched or clean_guess, cand_year, CFG.get("TMDB_TOKEN"))
-                exact_rt = (actual_mins < 45) or (tmdb_rt is not None and abs(tmdb_rt - actual_mins) <= 6.0)
-                hard_mismatch = (actual_mins >= 45 and tmdb_rt is not None and abs(tmdb_rt - actual_mins) > 20.0)
+                resolved = query_database(clean_guess, info.get("duration_mins", 0)) or guess
+                votes.setdefault(resolved, []).append(f"{m_label}:{m_name}")
+                c_yr_m = re.search(r"\((\d{4})\)", resolved)
+                c_yr = c_yr_m.group(1) if c_yr_m else None
+                c_rt = get_tmdb_runtime(resolved, c_yr, CFG.get("TMDB_TOKEN"))
+                if c_rt is not None and abs(c_rt - actual_mins) <= 4.0 and "Runtime" not in votes[resolved]:
+                    votes[resolved].append(f"Runtime({c_rt}m)")
 
-                if hard_mismatch:
-                    log(f"   -> FLAGGED AI hallucination: '{cand_matched or clean_guess}' (TMDB runtime {tmdb_rt}m != video {actual_mins:.0f}m); routing to (Unmatched).")
-                elif exact_rt and cand_matched:
-                    matched = cand_matched
-                else:
-                    sec_model = pick_secondary_ollama_model(CFG.get("LOCAL_AI_MODEL", "gemma3:4b")) if CFG.get("AI_PROVIDER") == "local_ollama" else None
-                    if sec_model and os.path.exists(tmp_snap):
-                        log(f"   -> Runtime not exact ({tmdb_rt or '?'}m vs {actual_mins:.0f}m); running second-opinion check with {sec_model}...")
-                        sec_prompt = "Identify the exact movie, TV show, or concert title shown in these video frames. Reply ONLY with the clean title (and year if known). If unsure, reply UNKNOWN."
-                        sec_raw = query_ollama_model(sec_model, sec_prompt, tmp_snap)
-                        sec_clean = re.sub(r"\s*\(\d{4}\)", "", sec_raw).strip()
-                        norm1 = re.sub(r"[^a-z0-9]", "", clean_guess.lower())
-                        norm2 = re.sub(r"[^a-z0-9]", "", sec_clean.lower())
-                        if norm1 and norm2 and (norm1 in norm2 or norm2 in norm1):
-                            log(f"   -> Dual-model consensus confirmed '{cand_matched or clean_guess}' ({sec_model} agreed).")
-                            matched = cand_matched or guess
-                        else:
-                            log(f"   -> FLAGGED AI disagreement: {CFG.get('LOCAL_AI_MODEL', 'gemma3:4b')}='{clean_guess}' vs {sec_model}='{sec_raw or 'UNKNOWN'}'; routing to (Unmatched).")
-                    elif cand_matched:
-                        matched = cand_matched
-        if not matched:
-            matched = f"{query or 'Unknown Disc'} (Unmatched)"
-            if not has_snap and CFG.get("ENABLE_UNMATCHED_SNAPSHOTS") == "true":
-                has_snap = create_snapshot_grid(fpath, tmp_snap, info["duration_secs"])
-    if not matched:
-        return
+        best_title, best_factors = None, []
+        for cand, flist in votes.items():
+            if len(flist) > len(best_factors):
+                best_title, best_factors = cand, flist
+        if best_title and len(best_factors) >= 2:
+            matched = best_title
+            log(f"   -> 2-of-4 CONFIRMED ({len(best_factors)}/4: {', '.join(best_factors)}) -> '{matched}'")
+        else:
+            summary = "; ".join(f"{k}:[{','.join(v)}]" for k, v in votes.items()) or "no votes"
+            log(f"   -> 2-of-4 NOT MET ({summary}); routing to (Unmatched) to prevent mislabeling.")
+
     safe = re.sub(r'[\\/:*?"<>|]', '', matched).strip()
     is_low, reasons = False, []
     if CFG.get("ENABLE_QUALITY_SORT") == "true":
