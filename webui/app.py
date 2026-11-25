@@ -293,10 +293,22 @@ def collect_logs():
                 return "".join(f.readlines()[-n:])
         except Exception:
             return ""
+    def _docker_log_tail(cname, n=100):
+        raw = docker_sock("GET", f"/containers/{cname}/logs?stdout=1&stderr=1&tail={n}", timeout=3)
+        if not raw or "No such container" in raw:
+            return ""
+        cleaned = []
+        for line in raw.splitlines():
+            clean_l = "".join(ch for ch in line if ch >= " " or ch == "\t").strip()
+            if clean_l:
+                cleaned.append(clean_l)
+        return "\n".join(cleaned[-n:])
+
     logs_dir = os.path.join(SYSTEM_DIR, "logs")
-    hb_log = _read_tail(os.path.join(logs_dir, "handbrake.log")) or _read_tail("/data/system/handbrake/log/hb/conversion.log")
+    mk_log = _read_tail(os.path.join(logs_dir, "make_mkv.log")) or _docker_log_tail("makemkv", 100)
+    hb_log = _read_tail("/data/system/handbrake/log/hb/conversion.log") or _read_tail(os.path.join(logs_dir, "handbrake.log")) or _docker_log_tail("handbrake", 100)
     return {
-        "makemkv": _read_tail(os.path.join(logs_dir, "make_mkv.log")) or "No MakeMKV alerts yet.",
+        "makemkv": mk_log or "No MakeMKV alerts yet.",
         "audio": _read_tail(os.path.join(logs_dir, "audio_audit.log")) or "No audio audits yet.",
         "handbrake": hb_log or "No HandBrake logs yet.",
         "organizer": _read_tail(os.path.join(logs_dir, "organizer.log")) or "No Organizer logs yet.",

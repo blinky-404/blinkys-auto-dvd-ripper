@@ -138,7 +138,7 @@ def get_tmdb_runtime(title, year=None, token=None):
         res = _http_get_json(url, {"Authorization": "Bearer " + token, "Accept": "application/json"}, 8).get("results", [])
         if not res:
             return None
-        mid = res.get("id")
+        mid = res.pop(0).get("id")
         if not mid:
             return None
         rt = _tmdb_runtime_mins("movie", mid, token)
