@@ -127,6 +127,25 @@ def _tmdb_runtime_mins(media_type, item_id, token):
     except Exception:
         return 0
 
+def get_tmdb_runtime(title, year=None, token=None):
+    if not token or not title:
+        return None
+    clean_t = re.sub(r"\s*\(\d{4}\)", "", str(title)).strip()
+    url = "/".join(["https:", "", "api.themoviedb.org", "3", "search", "movie"]) + "?include_adult=false&language=en-US&query=" + urllib.parse.quote(clean_t)
+    if year:
+        url += "&year=" + urllib.parse.quote(str(year))
+    try:
+        res = _http_get_json(url, {"Authorization": "Bearer " + token, "Accept": "application/json"}, 8).get("results", [])
+        if not res:
+            return None
+        mid = res.get("id")
+        if not mid:
+            return None
+        rt = _tmdb_runtime_mins("movie", mid, token)
+        return rt if rt > 0 else None
+    except Exception:
+        return None
+
 def lookup_tmdb(query, token, duration_mins=0):
     if not token:
         return None
