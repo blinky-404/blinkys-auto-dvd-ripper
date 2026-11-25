@@ -372,27 +372,14 @@ def update_stack():
 import time
 def _finished_watcher_loop():
     trig = os.path.join(MEDIA_DIR, "finished", ".trigger_organizer")
-    fin_dir = os.path.join(MEDIA_DIR, "finished")
     while True:
         try:
-            time.sleep(3)
-            has_trig = os.path.exists(trig)
-            settled_mp4 = False
-            if not has_trig and os.path.isdir(fin_dir):
-                now = time.time()
-                for fn in os.listdir(fin_dir):
-                    if fn.startswith(".") or not fn.lower().endswith((".mp4", ".mkv")):
-                        continue
-                    fp = os.path.join(fin_dir, fn)
-                    if os.path.isfile(fp) and (now - os.path.getmtime(fp)) > 25:
-                        settled_mp4 = True
-                        break
-            if has_trig or settled_mp4:
-                if has_trig:
-                    try:
-                        os.remove(trig)
-                    except OSError:
-                        pass
+            time.sleep(2)
+            if os.path.exists(trig):
+                try:
+                    os.remove(trig)
+                except OSError:
+                    pass
                 subprocess.run(["python3", "/app/scripts/organize-rips.py"], check=False)
         except Exception as e:
             print(f"[WATCHER ERROR] {e}", flush=True)

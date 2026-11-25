@@ -142,8 +142,8 @@ def lookup_tmdb(query, token, duration_mins=0):
             return None
         def score(r):
             s = float(r.get("popularity") or 0)
-            cand_title = (r.get("title") or r.get("name") or "").strip().lower()
-            q_norm = query.strip().lower()
+            cand_title = re.sub(r"[^a-z0-9 ]", "", (r.get("title") or r.get("name") or "").lower()).strip()
+            q_norm = re.sub(r"[^a-z0-9 ]", "", query.lower()).strip()
             if cand_title == q_norm:
                 s += 250.0
             elif cand_title.startswith(q_norm):
@@ -168,7 +168,7 @@ def lookup_tmdb(query, token, duration_mins=0):
             yr = date[:4] if len(date) >= 4 else ""
             if duration_mins > 0 and mid:
                 rt = _tmdb_runtime_mins(mtype, mid, token)
-                if rt > 0 and abs(rt - duration_mins) > 8:
+                if rt > 0 and abs(rt - duration_mins) > 4:
                     log(f"   -> TMDB candidate rejected by runtime guard: {title} ({yr}) is {rt}m vs disc {duration_mins}m")
                     continue
             return f"{title} ({yr})" if yr else title
@@ -365,6 +365,12 @@ def process_finished():
         mode = CFG.get("IDENTIFY_MODE", "db_then_ai")
         raw_title = resolve_source_title(fpath, fname)
         query = re.sub(r"(\s*\(\d{4}\)|\s*\(Unmatched\)|_SHORT_\d+m|\b(special|director.?s|extended|unrated|widescreen|fullscreen|collector.?s|anniversary|remastered|deluxe|theatrical|blu-?ray|dvd)\s*(edition|cut|version)?\b|\bt\d+\b|\b[A-Z]\d+\b)", "", clean_disc_name(raw_title), flags=re.I).strip()
+        if " - " in raw_title:
+            p_left, p_right = [x.strip() for x in raw_title.split(" - ", 1)]
+            n_left = re.sub(r"[^a-z0-9]", "", p_left.lower())
+            n_right = re.sub(r"[^a-z0-9]", "", p_right.lower())
+            if n_left and n_right.startswith(n_left):
+                query = re.sub(r'(?i)[-_\s]*(?:[A-Z]\d+_)?[tT]\d+$', '', p_right).replace("_", " ").strip()
         query = re.sub(r'(?<=[A-Za-z])[0-9A-F]{4}$', '', query).strip()
         if len(query) <= 3 or query.lower() in ("unidentified", "unknown", "untitled", "disc", "dvd", "movie", "video", "main"): query = ""
         matched = query_database(query, info.get("duration_mins", 0)) if mode in ("db_only", "db_then_ai") and query.upper() not in ("DVD VIDEO", "DISC 1", "DISC 2", "VIDEO TS", "MOVIE") else None
@@ -436,7 +442,7 @@ def process_finished():
     raw_base = os.path.join(MEDIA_DIR, "raw")
     for r_root, _, r_files in os.walk(raw_base, topdown=False):
         if r_root == raw_base:
-            return
+            continue
         if disc_prefix and os.path.basename(r_root) != disc_prefix:
             continue
         for cand in (f"{stem}.mkv", f"{raw_stem}.mkv"):
