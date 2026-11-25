@@ -304,7 +304,7 @@ def collect_logs():
         except Exception:
             return ""
     def _docker_log_tail(cname, n=100):
-        raw = docker_sock("GET", f"/containers/{cname}/logs?stdout=1&stderr=1&tail=400", timeout=3)
+        raw = docker_sock("GET", f"/containers/{cname}/logs?stdout=1&stderr=1&tail=3000", timeout=3)
         if not raw or "No such container" in raw:
             return ""
         return _filter_lines(raw.splitlines(), n)
