@@ -400,10 +400,10 @@ def process_finished():
         query = re.sub(r'(?<=[A-Za-z])[0-9A-F]{4}$', '', query).strip()
         if len(query) <= 3 or query.lower() in ("unidentified", "unknown", "untitled", "disc", "dvd", "movie", "video", "main"): query = ""
         mode = CFG.get("IDENTIFY_MODE", "db_then_ai").strip()
-    actual_mins = info["duration_secs"] / 60.0
-    factors_log = []
-    tmdb_candidate = query_database(query, info.get("duration_mins", 0)) if mode in ("db_only", "db_then_ai") and query and query.upper() not in ("DVD VIDEO", "DISC 1", "DISC 2", "VIDEO TS", "MOVIE") else None
-    if tmdb_candidate:
+        actual_mins = info["duration_secs"] / 60.0
+        factors_log = []
+        tmdb_candidate = query_database(query, info.get("duration_mins", 0)) if mode in ("db_only", "db_then_ai") and query and query.upper() not in ("DVD VIDEO", "DISC 1", "DISC 2", "VIDEO TS", "MOVIE") else None
+        if tmdb_candidate:
         factors_log.append(f"TMDB='{tmdb_candidate}'")
         c_yr_m = re.search(r"\((\d{4})\)", tmdb_candidate)
         c_yr = c_yr_m.group(1) if c_yr_m else None
@@ -415,8 +415,8 @@ def process_finished():
         else:
             factors_log.append(f"Runtime=MISMATCH({c_rt}m!={actual_mins:.0f}m)")
 
-    tmp_snap, has_snap = f"/tmp/grid_{int(time.time()*1000)}.jpg", False
-    if not matched and mode in ("ai_only", "db_then_ai"):
+        tmp_snap, has_snap = f"/tmp/grid_{int(time.time()*1000)}.jpg", False
+        if not matched and mode in ("ai_only", "db_then_ai"):
         cpu_now = current_cpu_pct()
         if cpu_now >= 70.0:
             hold_dir = os.path.join(MEDIA_DIR, "ai_hold")
