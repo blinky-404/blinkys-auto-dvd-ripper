@@ -394,7 +394,7 @@ def process_finished():
         is_short = (CFG.get("ENABLE_RUNTIME_CHECK") == "true" and info["duration_mins"] < min_mins)
         mode = CFG.get("IDENTIFY_MODE", "db_then_ai").strip()
         raw_title = resolve_source_title(fpath, fname)
-        query = re.sub(r"(\s*\(\d{4}\))|\s*\(Unmatched\)|_SHORT_\d+m|\b(special|director.?s|extended|unrated|widescreen|fullscreen|collector.?s|anniversary|remastered|deluxe|theatrical|blu-?ray|dvd)\s*(edition|cut|version)?\b|\bt\d+\b|[A-Z]\d+\b)", "", clean_disc_name(raw_title), flags=re.I).strip()
+        query = re.sub(r"(\s*\(\d{4}\))|\s*\(Unmatched\)|_SHORT_\d+m|\b(special|director.?s|extended|unrated|widescreen|fullscreen|collector.?s|anniversary|remastered|deluxe|theatrical|blu-?ray|dvd)\s*(edition|cut|version)?\b|\bt\d+\b|[A-Z]\d+\b", "", clean_disc_name(raw_title), flags=re.I).strip()
         if " - " in raw_title:
             p_left, p_right = [x.strip() for x in raw_title.split(" - ", 1)]
             n_left = re.sub(r"[^a-z0-9]", "", p_left.lower())
