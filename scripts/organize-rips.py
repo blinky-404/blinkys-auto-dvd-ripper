@@ -366,6 +366,13 @@ def process_finished():
         if time.time() - os.path.getmtime(fpath) < 20:
             continue
         fname = os.path.basename(fpath)
+        try:
+            ap = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a", "-show_entries", "stream=index,codec_name,channels:stream_tags=language", "-of", "csv=p=0", fpath], capture_output=True, text=True, timeout=10)
+            atracks = " | ".join([x.strip() for x in ap.stdout.strip().splitlines() if x.strip()]) or "NONE (0 audio tracks)"
+            with open(os.path.join(SYSTEM_DIR, "logs", "audio_audit.log"), "a", encoding="utf-8") as af:
+                af.write(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {fname} -> Audio Streams: {atracks}\n")
+        except Exception:
+            pass
         if os.path.abspath(os.path.dirname(fpath)) == os.path.abspath(hold_dir) and current_cpu_pct() >= 70.0:
             continue
         log(f"Processing: {fname}")

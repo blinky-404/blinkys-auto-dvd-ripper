@@ -285,28 +285,33 @@ def ai_install_status():
         return {"active": False, "pct": 0, "text": ""}
 
 def collect_logs():
-    def _read_tail(p, n=120):
+    import re
+    spam_re = re.compile(r"(Encoding:\s*task|\b\d{1,3}(?:\.\d+)?\s*%|PRGV:|PRGC:|PRGT:|Saving\s+\d+\s+titles)", re.I)
+    def _filter_lines(lines, n=100):
+        out = []
+        for line in lines:
+            clean_l = "".join(ch for ch in line if ch >= " " or ch == "\t").strip()
+            if not clean_l or spam_re.search(clean_l):
+                continue
+            out.append(clean_l)
+        return "\n".join(out[-n:])
+    def _read_tail(p, n=100):
         if not os.path.exists(p):
             return ""
         try:
             with open(p, "r", encoding="utf-8", errors="ignore") as f:
-                return "".join(f.readlines()[-n:])
+                return _filter_lines(f.readlines()[-400:], n)
         except Exception:
             return ""
     def _docker_log_tail(cname, n=100):
-        raw = docker_sock("GET", f"/containers/{cname}/logs?stdout=1&stderr=1&tail={n}", timeout=3)
+        raw = docker_sock("GET", f"/containers/{cname}/logs?stdout=1&stderr=1&tail=400", timeout=3)
         if not raw or "No such container" in raw:
             return ""
-        cleaned = []
-        for line in raw.splitlines():
-            clean_l = "".join(ch for ch in line if ch >= " " or ch == "\t").strip()
-            if clean_l:
-                cleaned.append(clean_l)
-        return "\n".join(cleaned[-n:])
+        return _filter_lines(raw.splitlines(), n)
 
     logs_dir = os.path.join(SYSTEM_DIR, "logs")
-    mk_log = _read_tail(os.path.join(logs_dir, "make_mkv.log")) or _docker_log_tail("makemkv", 100)
-    hb_log = _read_tail("/data/system/handbrake/log/hb/conversion.log") or _read_tail(os.path.join(logs_dir, "handbrake.log")) or _docker_log_tail("handbrake", 100)
+    mk_log = _read_tail(os.path.join(logs_dir, "make_mkv.log")) or _docker_log_tail("makemkv", 80)
+    hb_log = _read_tail("/data/system/handbrake/log/hb/conversion.log") or _read_tail(os.path.join(logs_dir, "handbrake.log")) or _docker_log_tail("handbrake", 80)
     return {
         "makemkv": mk_log or "No MakeMKV alerts yet.",
         "audio": _read_tail(os.path.join(logs_dir, "audio_audit.log")) or "No audio audits yet.",
