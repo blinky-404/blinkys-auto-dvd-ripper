@@ -453,6 +453,9 @@ def process_finished():
             summary = "; ".join(f"{k}:[{','.join(v)}]" for k, v in votes.items()) or "no votes"
             log(f"   -> 2-of-4 NOT MET ({summary}); routing to (Unmatched) to prevent mislabeling.")
 
+    if not matched:
+        fallback_label = re.sub(r'[\\/:*?"<>|]', '', (query or stem)).strip() or "Unknown_Disc"
+        matched = f"{fallback_label} (Unmatched)"
     safe = re.sub(r'[\\/:*?"<>|]', '', matched).strip()
     is_low, reasons = False, []
     if CFG.get("ENABLE_QUALITY_SORT") == "true":
