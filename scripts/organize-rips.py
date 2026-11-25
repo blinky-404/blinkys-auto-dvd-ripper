@@ -347,6 +347,8 @@ def process_finished():
         if time.time() - os.path.getmtime(fpath) < 20:
             continue
         fname = os.path.basename(fpath)
+        if os.path.abspath(os.path.dirname(fpath)) == os.path.abspath(hold_dir) and current_cpu_pct() >= 70.0:
+            continue
         log(f"Processing: {fname}")
         info = probe_media(fpath)
         if not info:
@@ -363,6 +365,7 @@ def process_finished():
         mode = CFG.get("IDENTIFY_MODE", "db_then_ai")
         raw_title = resolve_source_title(fpath, fname)
         query = re.sub(r"(\s*\(\d{4}\)|\s*\(Unmatched\)|_SHORT_\d+m|\b(special|director.?s|extended|unrated|widescreen|fullscreen|collector.?s|anniversary|remastered|deluxe|theatrical|blu-?ray|dvd)\s*(edition|cut|version)?\b|\bt\d+\b|\b[A-Z]\d+\b)", "", clean_disc_name(raw_title), flags=re.I).strip()
+        query = re.sub(r'(?<=[A-Za-z])[0-9A-F]{4}$', '', query).strip()
         if len(query) <= 3 or query.lower() in ("unidentified", "unknown", "untitled", "disc", "dvd", "movie", "video", "main"): query = ""
         matched = query_database(query, info.get("duration_mins", 0)) if mode in ("db_only", "db_then_ai") and query.upper() not in ("DVD VIDEO", "DISC 1", "DISC 2", "VIDEO TS", "MOVIE") else None
         tmp_snap, has_snap = f"/tmp/grid_{int(time.time()*1000)}.jpg", False
@@ -374,7 +377,7 @@ def process_finished():
                 dest_hold = os.path.join(hold_dir, fname)
                 if os.path.abspath(fpath) != os.path.abspath(dest_hold):
                     shutil.move(fpath, dest_hold)
-                log(f"   -> CPU load at {cpu_now}% (>= 70%); parked in ai_hold/ until CPU is below 70%.")
+                    log(f"   -> CPU load at {cpu_now}% (>= 70%); parked in ai_hold/ until CPU is below 70%.")
                 return
             guess = identify_with_ai(fpath, info["duration_secs"], "/tmp/ai_scans")
             if os.path.exists("/tmp/ai_scans/preview_grid.jpg"):
