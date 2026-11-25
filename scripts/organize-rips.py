@@ -440,7 +440,7 @@ def process_finished():
                 if os.path.abspath(fpath) != os.path.abspath(dest_hold):
                     shutil.move(fpath, dest_hold)
                     log(f"   -> CPU load at {cpu_now}% (>= 70%); parked in ai_hold/ until CPU is below 70%.")
-                return
+                continue
 
             ai1_model = CFG.get("LOCAL_AI_MODEL", "gemma3:4b").strip()
             ai2_model = pick_secondary_ollama_model(ai1_model) or CFG.get("SECONDARY_AI_MODEL", "").strip()
