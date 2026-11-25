@@ -207,59 +207,70 @@ async def ai_install(request: Request):
     models = list(dict.fromkeys([m for m in [m1, m2] if m and m.lower() != "none"]))
     state_file = os.path.join(SYSTEM_DIR, "logs", "ai_install.json")
     os.makedirs(os.path.dirname(state_file), exist_ok=True)
-    with open(state_file, "w") as f:
-        json.dump({"active": True, "pct": 0, "text": f"Starting Ollama container for {', '.join(models)}..."}, f)
 
-    worker = f"""
-import json, subprocess, time, urllib.request
-models = {repr(models)}
-state_file = {repr(state_file)}
-def save(active, pct, text):
-    with open(state_file, "w") as f:
-        json.dump({{"active": active, "pct": pct, "text": text}}, f)
-
-try:
-    subprocess.run(["bash", "-c", "docker rm -f ripper-ai-vision >/dev/null 2>&1; docker run -d --name ripper-ai-vision -p 127.0.0.1:11434:11434 -v {SYSTEM_DIR}/ollama:/root/.ollama ollama/ollama:latest"], check=True)
-    for _ in range(25):
+    def _run_pull():
+        def save(active, pct, text):
+            with open(state_file, "w") as f:
+                json.dump({"active": active, "pct": pct, "text": text}, f)
         try:
-            urllib.request.urlopen("http://127.0.0", timeout=1)
-            break
-        except Exception:
-            time.sleep(1)
+            save(True, 1, f"Preparing Ollama container for {', '.join(models)}...")
+            docker_sock("DELETE", "/containers/ripper-ai-vision?force=true")
+            create_body = json.dumps({
+                "Image": "ollama/ollama:latest",
+                "HostConfig": {
+                    "Binds": ["/DATA/ripper_system/ollama:/root/.ollama"],
+                    "PortBindings": {"11434/tcp": [{"HostIp": "127.0.0.1", "HostPort": "11434"}]}
+                }
+            })
+            res = docker_sock("POST", "/containers/create?name=ripper-ai-vision", create_body)
+            if "No such image" in res:
+                save(True, 1, "Pulling ollama/ollama:latest engine image (first-time setup)...")
+                docker_sock("POST", "/images/create?fromImage=ollama/ollama&tag=latest")
+                res = docker_sock("POST", "/containers/create?name=ripper-ai-vision", create_body)
+            docker_sock("POST", "/containers/ripper-ai-vision/start")
 
-    for idx, m in enumerate(models):
-        save(True, int((idx / len(models)) * 100), f"Pulling {{m}} ({{idx+1}}/{{len(models)}})...")
-        req = urllib.request.Request("http://127.0.0", data=json.dumps({{"name": m, "stream": True}}).encode(), headers={{"Content-Type": "application/json"}})
-        t0, start_bytes = time.time(), None
-        with urllib.request.urlopen(req, timeout=3600) as resp:
-            for raw in resp:
-                if not raw.strip():
-                    continue
-                ev = json.loads(raw.decode("utf-8", errors="ignore"))
-                if ev.get("error"):
-                    raise RuntimeError(ev["error"])
-                tot, comp = ev.get("total") or 0, ev.get("completed") or 0
-                status = ev.get("status", "downloading")
-                if tot > 0:
-                    if start_bytes is None:
-                        start_bytes, t0 = comp, time.time()
-                    frac = min(1.0, comp / tot)
-                    overall = int(((idx + frac) / len(models)) * 100)
-                    elapsed = max(0.5, time.time() - t0)
-                    spd = max(0.0, (comp - start_bytes) / elapsed)
-                    eta_s = int((tot - comp) / spd) if spd > 1024 else 0
-                    eta_str = f" • ETA {{eta_s // 60}}m {{eta_s % 60:02d}}s" if eta_s > 0 else ""
-                    spd_mb = spd / (1024 * 1024)
-                    save(True, overall, f"Pulling {{m}} ({{idx+1}}/{{len(models)}}): {{int(frac*100)}}% ({{comp/1e9:.2f}} / {{tot/1e9:.2f}} GB • {{spd_mb:.1f}} MB/s{{eta_str}})")
-                else:
-                    save(True, int((idx / len(models)) * 100), f"{{m}} ({{idx+1}}/{{len(models)}}): {{status}}")
-    save(False, 100, f"Installed: {{', '.join(models)}} (0 Idle RAM — container stopped)")
-except Exception as ex:
-    save(False, 0, f"Error installing models: {{ex}}")
-finally:
-    subprocess.run(["docker", "stop", "ripper-ai-vision"], check=False)
-"""
-    subprocess.Popen(["python3", "-c", worker])
+            tags_url = "http://127.0.0.1" + ":11434/api/tags"
+            pull_url = "http://127.0.0.1" + ":11434/api/pull"
+            for _ in range(30):
+                try:
+                    urllib.request.urlopen(tags_url, timeout=1)
+                    break
+                except Exception:
+                    time.sleep(1)
+
+            for idx, m in enumerate(models):
+                save(True, int((idx / len(models)) * 100), f"Pulling {m} ({idx+1}/{len(models)})...")
+                req = urllib.request.Request(pull_url, data=json.dumps({"name": m, "stream": True}).encode(), headers={"Content-Type": "application/json"})
+                t0, start_bytes = time.time(), None
+                with urllib.request.urlopen(req, timeout=3600) as resp:
+                    for raw in resp:
+                        if not raw.strip():
+                            continue
+                        ev = json.loads(raw.decode("utf-8", errors="ignore"))
+                        if ev.get("error"):
+                            raise RuntimeError(ev["error"])
+                        tot, comp = ev.get("total") or 0, ev.get("completed") or 0
+                        status = ev.get("status", "downloading")
+                        if tot > 0:
+                            if start_bytes is None:
+                                start_bytes, t0 = comp, time.time()
+                            frac = min(1.0, comp / tot)
+                            overall = int(((idx + frac) / len(models)) * 100)
+                            elapsed = max(0.5, time.time() - t0)
+                            spd = max(0.0, (comp - start_bytes) / elapsed)
+                            eta_s = int((tot - comp) / spd) if spd > 1024 else 0
+                            eta_str = f" • ETA {eta_s // 60}m {eta_s % 60:02d}s" if eta_s > 0 else ""
+                            spd_mb = spd / (1024 * 1024)
+                            save(True, overall, f"Pulling {m} ({idx+1}/{len(models)}): {int(frac*100)}% ({comp/1e9:.2f} / {tot/1e9:.2f} GB • {spd_mb:.1f} MB/s{eta_str})")
+                        else:
+                            save(True, int((idx / len(models)) * 100), f"{m} ({idx+1}/{len(models)}): {status}")
+            save(False, 100, f"Installed: {', '.join(models)} (0 Idle RAM — container stopped)")
+        except Exception as ex:
+            save(False, 0, f"Error installing models: {ex}")
+        finally:
+            docker_sock("POST", "/containers/ripper-ai-vision/stop")
+
+    threading.Thread(target=_run_pull, daemon=True).start()
     return {"ok": True, "message": f"Starting download for {', '.join(models)}..."}
 
 @app.get("/api/ai/install-status")
