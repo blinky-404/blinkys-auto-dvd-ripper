@@ -284,6 +284,24 @@ def ai_install_status():
     except Exception:
         return {"active": False, "pct": 0, "text": ""}
 
+def collect_logs():
+    def _read_tail(p, n=120):
+        if not os.path.exists(p):
+            return ""
+        try:
+            with open(p, "r", encoding="utf-8", errors="ignore") as f:
+                return "".join(f.readlines()[-n:])
+        except Exception:
+            return ""
+    logs_dir = os.path.join(SYSTEM_DIR, "logs")
+    hb_log = _read_tail(os.path.join(logs_dir, "handbrake.log")) or _read_tail("/data/system/handbrake/log/hb/conversion.log")
+    return {
+        "makemkv": _read_tail(os.path.join(logs_dir, "make_mkv.log")) or "No MakeMKV alerts yet.",
+        "audio": _read_tail(os.path.join(logs_dir, "audio_audit.log")) or "No audio audits yet.",
+        "handbrake": hb_log or "No HandBrake logs yet.",
+        "organizer": _read_tail(os.path.join(logs_dir, "organizer.log")) or "No Organizer logs yet.",
+    }
+
 @app.get("/api/logs")
 def get_logs():
     return collect_logs()
