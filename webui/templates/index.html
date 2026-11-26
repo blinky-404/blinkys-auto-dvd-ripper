@@ -134,27 +134,60 @@
       </div>
     </section>
     <section id="sec-guide" class="hidden">
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;background:transparent;border:none;padding:0;">
-    <div style="background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:18px;">
-      <div style="font-size:11px;color:#38bdf8;text-transform:uppercase;margin-bottom:4px;">v2.2.0 Safety</div>
-      <h3 style="color:#f8fafc;margin:0 0 8px 0;font-size:15px;">2-of-4 Multi-Factor Confirmation</h3>
-      <p style="font-size:13px;color:#cbd5e1;margin:0;">Movies require at least <strong>2 factors</strong> (TMDB, Runtime &plusmn;4m, Primary AI, Secondary AI) before naming. Unverified rips route to <code>finished/&lt;Title&gt; (Unmatched)/</code> with a 2&times;2 preview grid.</p>
+  <div style="margin-bottom:14px;">
+    <h2 style="color:#38bdf8;margin:0 0 4px 0;font-size:18px;">Complete User Guide &amp; Troubleshooting Reference</h2>
+    <p style="font-size:13px;color:#94a3b8;margin:0;">Everything you need to know about how discs move through the pipeline, why files get tagged or quarantined, and how to tune AI Vision &amp; hardware settings.</p>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;background:transparent;border:none;padding:0;">
+
+    <div style="background:#0f172a;border:1px solid #1e293b;border-top:3px solid #38bdf8;border-radius:10px;padding:18px;">
+      <div style="font-size:11px;color:#38bdf8;text-transform:uppercase;margin-bottom:4px;">1. End-to-End Flow</div>
+      <h3 style="color:#f8fafc;margin:0 0 8px 0;font-size:15px;">What Happens When You Insert a Disc?</h3>
+      <p style="font-size:13px;color:#cbd5e1;line-height:1.55;margin:0;"><strong>Step 1 (MakeMKV):</strong> Automatically detects the disc, rips titles &ge; 40 mins into <code>raw/</code>, and ejects the tray.<br><strong>Step 2 (HandBrake):</strong> Picks up the MKV, checks audio tracks, encodes to MP4, and drops it into <code>to_organize/</code>.<br><strong>Step 3 (Organizer):</strong> Identifies the movie, deletes the raw MKV only after audio passes, and files the MP4 into <code>finished/</code>.</p>
     </div>
-    <div style="background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:18px;">
-      <div style="font-size:11px;color:#10b981;text-transform:uppercase;margin-bottom:4px;">Storage</div>
-      <h3 style="color:#f8fafc;margin:0 0 8px 0;font-size:15px;">Streamlined 4-Folder Pipeline</h3>
-      <p style="font-size:13px;color:#cbd5e1;margin:0;"><strong>raw/</strong> holds MKVs until audio passes &rarr; <strong>to_organize/</strong> queues HandBrake outputs (<code>_AI_HOLD</code> if CPU &ge; 70%) &rarr; <strong>finished/</strong> holds movies &rarr; <strong>quarantine/</strong> isolates media defects.</p>
+
+    <div style="background:#0f172a;border:1px solid #1e293b;border-top:3px solid #10b981;border-radius:10px;padding:18px;">
+      <div style="font-size:11px;color:#10b981;text-transform:uppercase;margin-bottom:4px;">2. Folder Map</div>
+      <h3 style="color:#f8fafc;margin:0 0 8px 0;font-size:15px;">Understanding Your 4 Media Folders</h3>
+      <p style="font-size:13px;color:#cbd5e1;line-height:1.55;margin:0;"><strong>raw/:</strong> Temporary MakeMKV rips (auto-deleted after encode &amp; audio pass).<br><strong>to_organize/:</strong> HandBrake outputs waiting to be sorted. Click any Dashboard card to jump straight inside its folder.<br><strong>finished/:</strong> Your clean movie library (<code>Title (Year)/Title (Year).mp4</code> + <code>_info.txt</code>).<br><strong>quarantine/:</strong> Media defects only (<code>audio_problems/</code>, <code>low_quality/</code>, <code>no_audio/</code>).</p>
     </div>
-    <div style="background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:18px;">
-      <div style="font-size:11px;color:#a855f7;text-transform:uppercase;margin-bottom:4px;">Zero Idle RAM</div>
-      <h3 style="color:#f8fafc;margin:0 0 8px 0;font-size:15px;">On-Demand Local AI Vision</h3>
-      <p style="font-size:13px;color:#cbd5e1;margin:0;">Select compatible models in <strong>Setup &amp; Toggles</strong> and click <strong>Install Selected Local AI Models</strong>. Ollama runs only during scans (0 MB idle RAM).</p>
+
+    <div style="background:#0f172a;border:1px solid #1e293b;border-top:3px solid #f59e0b;border-radius:10px;padding:18px;">
+      <div style="font-size:11px;color:#f59e0b;text-transform:uppercase;margin-bottom:4px;">3. Filename Tags</div>
+      <h3 style="color:#f8fafc;margin:0 0 8px 0;font-size:15px;">Why Is My File Tagged _AI_HOLD or (Unmatched)?</h3>
+      <p style="font-size:13px;color:#cbd5e1;line-height:1.55;margin:0;"><strong>_AI_HOLD (in to_organize/):</strong> TMDB needed a second opinion from AI Vision, but CPU load was &ge; 70% (HandBrake was active). Once HandBrake finishes, the organizer automatically strips <code>_AI_HOLD</code> and scans it.<br><strong>(Unmatched) (in finished/):</strong> Fewer than 2 factors agreed on the title. Instead of guessing wrong, it saves your video alongside a <code>_AI_preview.jpg</code> 2&times;2 snapshot grid so you can identify it at a glance.</p>
     </div>
-    <div style="background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:18px;">
-      <div style="font-size:11px;color:#f59e0b;text-transform:uppercase;margin-bottom:4px;">Discs &amp; Drives</div>
-      <h3 style="color:#f8fafc;margin:0 0 8px 0;font-size:15px;">TV Box Sets, Concerts &amp; USB Drives</h3>
-      <p style="font-size:13px;color:#cbd5e1;margin:0;">For <strong>TV or Concert DVDs</strong>, uncheck Min Runtime (45m) and switch Database to <strong>TVmaze</strong> or <strong>MusicBrainz</strong>. Use <strong>Sequential Queue</strong> for USB drives.</p>
+
+    <div style="background:#0f172a;border:1px solid #1e293b;border-top:3px solid #a855f7;border-radius:10px;padding:18px;">
+      <div style="font-size:11px;color:#a855f7;text-transform:uppercase;margin-bottom:4px;">4. Anti-Mislabeling</div>
+      <h3 style="color:#f8fafc;margin:0 0 8px 0;font-size:15px;">How 2-of-4 Confirmation Voting Works</h3>
+      <p style="font-size:13px;color:#cbd5e1;line-height:1.55;margin:0;">To prevent obscure disc labels (like <code>DVD_VIDEO</code>) from getting misnamed, every movie needs at least <strong>2 matching votes</strong> out of 4:<br>&bull; <strong>Factor 1:</strong> TMDB / Database title match<br>&bull; <strong>Factor 2:</strong> Runtime match within &plusmn;4 mins<br>&bull; <strong>Factor 3:</strong> Primary Local AI Vision model<br>&bull; <strong>Factor 4:</strong> Secondary Local AI Vision model</p>
     </div>
+
+    <div style="background:#0f172a;border:1px solid #1e293b;border-top:3px solid #38bdf8;border-radius:10px;padding:18px;">
+      <div style="font-size:11px;color:#38bdf8;text-transform:uppercase;margin-bottom:4px;">5. Local AI Vision</div>
+      <h3 style="color:#f8fafc;margin:0 0 8px 0;font-size:15px;">Installing &amp; Running Local AI (0 MB Idle RAM)</h3>
+      <p style="font-size:13px;color:#cbd5e1;line-height:1.55;margin:0;">1. Open <strong>Setup &amp; Toggles</strong> and check the hardware banner at the top of the AI card (models exceeding your RAM/CPU are automatically grayed out).<br>2. Pick a Primary + Secondary model and click <strong>Install Selected Local AI Models</strong> (watch the live % progress bar).<br>3. Ollama stays completely stopped (<strong>0 MB RAM</strong>) until a disc needs visual scanning, then shuts down immediately after.</p>
+    </div>
+
+    <div style="background:#0f172a;border:1px solid #1e293b;border-top:3px solid #10b981;border-radius:10px;padding:18px;">
+      <div style="font-size:11px;color:#10b981;text-transform:uppercase;margin-bottom:4px;">6. Audio &amp; Quarantine</div>
+      <h3 style="color:#f8fafc;margin:0 0 8px 0;font-size:15px;">Audio Protection &amp; Quarantine Rules</h3>
+      <p style="font-size:13px;color:#cbd5e1;line-height:1.55;margin:0;"><strong>quarantine/no_audio/:</strong> Catches silent encodes with 0 audio tracks.<br><strong>quarantine/audio_problems/:</strong> Automatically rescues your untouched original MakeMKV <code>.mkv</code> from <code>raw/</code> if the finished MP4 fails audio so you never lose a rip.<br><strong>quarantine/low_quality/:</strong> Catches corrupted encodes below minimum height (300p) or bitrate (400 kbps).</p>
+    </div>
+
+    <div style="background:#0f172a;border:1px solid #1e293b;border-top:3px solid #f59e0b;border-radius:10px;padding:18px;">
+      <div style="font-size:11px;color:#f59e0b;text-transform:uppercase;margin-bottom:4px;">7. Non-Movie Discs</div>
+      <h3 style="color:#f8fafc;margin:0 0 8px 0;font-size:15px;">TV Box Sets, Concerts &amp; Bonus Features</h3>
+      <p style="font-size:13px;color:#cbd5e1;line-height:1.55;margin:0;"><strong>TV Series / Anime:</strong> Uncheck <em>Min Runtime (45m)</em> in Setup and switch Metadata Database to <strong>TVmaze</strong>.<br><strong>Concert / Music DVDs:</strong> Switch Database to <strong>MusicBrainz</strong> (no API key required).<br><strong>Short Videos / Extras:</strong> <code>short_videos/</code> is hidden until triggered; clips under 45 mins automatically create and route there instead of polluting your movie folder.</p>
+    </div>
+
+    <div style="background:#0f172a;border:1px solid #1e293b;border-top:3px solid #f43f5e;border-radius:10px;padding:18px;">
+      <div style="font-size:11px;color:#f43f5e;text-transform:uppercase;margin-bottom:4px;">8. Troubleshooting</div>
+      <h3 style="color:#f8fafc;margin:0 0 8px 0;font-size:15px;">Drive Not Detected, USB Resets &amp; Logs</h3>
+      <p style="font-size:13px;color:#cbd5e1;line-height:1.55;margin:0;"><strong>Drive Plugged In After Boot:</strong> Click <strong>Restart MakeMKV</strong> on the Dashboard so the container binds the new <code>/dev/sr*</code> device.<br><strong>USB Power Warning:</strong> External DVD drives draw high spin-up current; use rear motherboard USB 3.0 ports or a powered hub and keep <strong>Sequential Queue</strong> enabled.<br><strong>Need Details?</strong> Check <strong>Logs &amp; Reports</strong> for live MakeMKV, Audio Audit, HandBrake, and Organizer logs.</p>
+    </div>
+
   </div>
 </section>
   </main>
