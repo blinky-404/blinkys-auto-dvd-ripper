@@ -414,7 +414,7 @@ def update_stack():
         subprocess.run(["chown", "-R", f"{st.st_uid}:{st.st_gid}", "/repo"], check=False)
         with open(log_path, "a") as lf:
             lf.write(pull.stdout + pull.stderr + "\n[2/4] Updating ai_hold folder & HandBrake post_conversion.sh hook...\n")
-        for qsub in ("no_audio", "low_quality", "unmatched", "audio_problems"): os.makedirs(os.path.join(MEDIA_DIR, "quarantine", qsub), exist_ok=True)
+        for qsub in ("no_audio", "low_quality", "audio_problems"): os.makedirs(os.path.join(MEDIA_DIR, "quarantine", qsub), exist_ok=True)
         hook_src = "/repo/scripts/handbrake-post-conversion.sh"
         hook_dst = os.path.join(SYSTEM_DIR, "handbrake", "hooks", "post_conversion.sh")
         if os.path.exists(hook_src):

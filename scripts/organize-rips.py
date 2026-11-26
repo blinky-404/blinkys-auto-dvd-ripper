@@ -22,7 +22,7 @@ CONF_FILE = os.path.join(SYSTEM_DIR, "config", "organizer.conf")
 LOG_FILE = os.path.join(SYSTEM_DIR, "logs", "organizer.log")
 
 os.makedirs(os.path.join(SYSTEM_DIR, "logs"), exist_ok=True)
-for sub in ["to_organize", "finished", "quarantine/no_audio", "quarantine/low_quality", "quarantine/unmatched", "quarantine/audio_problems"]:
+for sub in ["to_organize", "finished", "quarantine/no_audio", "quarantine/low_quality", "quarantine/audio_problems"]:
     os.makedirs(os.path.join(MEDIA_DIR, sub), exist_ok=True)
 
 def load_conf():
@@ -488,7 +488,7 @@ def process_finished():
                 log(f"   -> 2-of-4 CONFIRMED ({len(best_factors)}/4: {', '.join(best_factors)}) -> '{matched}'")
             else:
                 summary = "; ".join(f"{k}:[{','.join(v)}]" for k, v in votes.items()) or "no votes"
-                log(f"   -> 2-of-4 NOT MET ({summary}); routing to quarantine/unmatched/ to prevent mislabeling.")
+                log(f"   -> 2-of-4 NOT MET ({summary}); routing to finished/ with (Unmatched) tag.")
 
         is_unmatched = not matched
         if is_unmatched:
@@ -503,7 +503,7 @@ def process_finished():
             if 0 < info["bitrate_kbps"] < int(CFG.get("MIN_VIDEO_BITRATE_KBPS", 400)):
                 is_low, reasons = True, reasons + [f"Bitrate {info['bitrate_kbps']}kbps"]
 
-        base_bucket = "short_videos" if is_short else ("quarantine/low_quality" if is_low else ("quarantine/unmatched" if is_unmatched else "finished"))
+        base_bucket = "short_videos" if is_short else ("quarantine/low_quality" if is_low else "finished")
         dest_dir = os.path.join(MEDIA_DIR, base_bucket, safe)
         os.makedirs(dest_dir, exist_ok=True)
         shutil.move(fpath, os.path.join(dest_dir, f"{safe} - Extra ({info['duration_mins']}m){ext}" if is_short else f"{safe}{ext}"))
