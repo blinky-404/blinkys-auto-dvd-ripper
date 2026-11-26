@@ -22,7 +22,7 @@ CONF_FILE = os.path.join(SYSTEM_DIR, "config", "organizer.conf")
 LOG_FILE = os.path.join(SYSTEM_DIR, "logs", "organizer.log")
 
 os.makedirs(os.path.join(SYSTEM_DIR, "logs"), exist_ok=True)
-for sub in ["to_organize", "finished", "short_videos", "quarantine/no_audio", "quarantine/low_quality", "quarantine/unmatched", "quarantine/audio_problems"]:
+for sub in ["to_organize", "finished", "quarantine/no_audio", "quarantine/low_quality", "quarantine/unmatched", "quarantine/audio_problems"]:
     os.makedirs(os.path.join(MEDIA_DIR, sub), exist_ok=True)
 
 def load_conf():
