@@ -21,10 +21,14 @@ A hands-free, self-hosted **DVD & Blu-ray auto-ripping, encoding, quality-auditi
 ## Screenshots
 
 ### Web Control Center Dashboard
-<img width="1910" height="678" alt="Screenshot 2026-11-23 165249" src="https://github.com/user-attachments/assets/f426cb43-9f70-49ca-bdfe-a5e332784030" />
+<img width="1918" height="940" alt="dashboard" src="https://github.com/user-attachments/assets/2f7b4ef6-c6dd-4fdb-9c33-64e4c7d18972" />
+
 ### Universal Media Test Player & Logs
 <img width="1883" height="701" alt="Screenshot 2026-11-23 165343" src="https://github.com/user-attachments/assets/01b02c7d-32fc-4e33-9737-d5a4b7df1f01" />
 <img width="1918" height="726" alt="Screenshot 2026-11-23 165326" src="https://github.com/user-attachments/assets/f2481901-7a6a-4377-93fc-080e07b4a113" />
+
+### Settings
+<img width="1905" height="940" alt="settings" src="https://github.com/user-attachments/assets/9bfe7c8b-e7c9-4a02-912f-0d709af6d39c" />
 
 
 ## Quick Start (One-Command Install)
