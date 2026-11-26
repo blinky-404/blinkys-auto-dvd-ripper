@@ -22,7 +22,7 @@ CONF_FILE = os.path.join(SYSTEM_DIR, "config", "organizer.conf")
 LOG_FILE = os.path.join(SYSTEM_DIR, "logs", "organizer.log")
 
 os.makedirs(os.path.join(SYSTEM_DIR, "logs"), exist_ok=True)
-for sub in ["finished", "organized_movies", "low_quality_quarantine", "no_audio"]:
+for sub in ["finished", "organized_movies", "short_videos", "quarantine/no_audio", "quarantine/low_quality", "quarantine/unmatched"]:
     os.makedirs(os.path.join(MEDIA_DIR, sub), exist_ok=True)
 
 def load_conf():
@@ -355,9 +355,7 @@ def identify_with_ai(video_path, duration_secs, out_dir, model_name=None):
 
 def process_finished():
     fin_dir = os.path.join(MEDIA_DIR, "finished")
-    hold_dir = os.path.join(MEDIA_DIR, "ai_hold")
-    os.makedirs(hold_dir, exist_ok=True)
-    files = [os.path.join(r, fn) for d in (fin_dir, hold_dir) for r, _, fns in os.walk(d) if "/." not in r for fn in fns if fn.lower().endswith((".mp4", ".mkv", ".m4v")) and not fn.startswith(".")]
+    files = [os.path.join(r, fn) for r, _, fns in os.walk(fin_dir) if "/." not in r for fn in fns if fn.lower().endswith((".mp4", ".mkv", ".m4v")) and not fn.startswith(".")]
     if not files:
         log("Organizer check complete: No new files in finished/.")
         return
@@ -375,7 +373,7 @@ def process_finished():
         except Exception:
             pass
 
-        if os.path.abspath(os.path.dirname(fpath)) == os.path.abspath(hold_dir) and current_cpu_pct() >= 70.0:
+        if "_AI_HOLD" in os.path.splitext(fname)[0] and current_cpu_pct() >= 70.0:
             continue
 
         log(f"Processing: {fname}")
@@ -386,15 +384,15 @@ def process_finished():
 
         stem, ext = os.path.splitext(fname)
         if not info["a_codecs"] and CFG.get("ENABLE_SILENT_QUARANTINE") == "true":
-            shutil.move(fpath, os.path.join(MEDIA_DIR, "no_audio", f"{stem}_NO_AUDIO{ext}"))
-            log(f"   -> QUARANTINED to no_audio/ (0 audio tracks)")
+            shutil.move(fpath, os.path.join(MEDIA_DIR, "quarantine", "no_audio", f"{stem}_NO_AUDIO{ext}"))
+            log(f"   -> QUARANTINED to quarantine/no_audio/ (0 audio tracks)")
             continue
 
         min_mins = float(CFG.get("MIN_RUNTIME_MINS", 45))
         is_short = (CFG.get("ENABLE_RUNTIME_CHECK") == "true" and info["duration_mins"] < min_mins)
         mode = CFG.get("IDENTIFY_MODE", "db_then_ai").strip()
         raw_title = resolve_source_title(fpath, fname)
-        query = re.sub(r"(\s*\(\d{4}\))|\s*\(Unmatched\)|_SHORT_\d+m|\b(special|director.?s|extended|unrated|widescreen|fullscreen|collector.?s|anniversary|remastered|deluxe|theatrical|blu-?ray|dvd)\s*(edition|cut|version)?\b|\bt\d+\b|[A-Z]\d+\b", "", clean_disc_name(raw_title), flags=re.I).strip()
+        query = re.sub(r"(\s*\(\d{4}\))|\s*\(Unmatched\)|_AI_HOLD|_SHORT_\d+m|\b(special|director.?s|extended|unrated|widescreen|fullscreen|collector.?s|anniversary|remastered|deluxe|theatrical|blu-?ray|dvd)\s*(edition|cut|version)?\b|\bt\d+\b|[A-Z]\d+\b", "", clean_disc_name(raw_title), flags=re.I).strip()
         if " - " in raw_title:
             p_left, p_right = [x.strip() for x in raw_title.split(" - ", 1)]
             n_left = re.sub(r"[^a-z0-9]", "", p_left.lower())
@@ -436,10 +434,10 @@ def process_finished():
         if not matched and mode in ("ai_only", "db_then_ai"):
             cpu_now = current_cpu_pct()
             if cpu_now >= 70.0:
-                dest_hold = os.path.join(hold_dir, fname)
-                if os.path.abspath(fpath) != os.path.abspath(dest_hold):
-                    shutil.move(fpath, dest_hold)
-                    log(f"   -> CPU load at {cpu_now}% (>= 70%); parked in ai_hold/ until CPU is below 70%.")
+                if "_AI_HOLD" not in stem:
+                    hold_path = os.path.join(os.path.dirname(fpath), f"{stem}_AI_HOLD{ext}")
+                    shutil.move(fpath, hold_path)
+                    log(f"   -> CPU load at {cpu_now}% (>= 70%); tagged {stem}_AI_HOLD{ext} in finished/ until CPU drops below 70%.")
                 continue
 
             ai1_model = CFG.get("LOCAL_AI_MODEL", "gemma3:4b").strip()
@@ -474,10 +472,11 @@ def process_finished():
                 log(f"   -> 2-of-4 CONFIRMED ({len(best_factors)}/4: {', '.join(best_factors)}) -> '{matched}'")
             else:
                 summary = "; ".join(f"{k}:[{','.join(v)}]" for k, v in votes.items()) or "no votes"
-                log(f"   -> 2-of-4 NOT MET ({summary}); routing to (Unmatched) to prevent mislabeling.")
+                log(f"   -> 2-of-4 NOT MET ({summary}); routing to quarantine/unmatched/ to prevent mislabeling.")
 
-        if not matched:
-            fallback_label = re.sub(r'[\\/:*?"<>|]', '', (query or stem)).strip() or "Unknown_Disc"
+        is_unmatched = not matched
+        if is_unmatched:
+            fallback_label = re.sub(r'[\\/:*?"<>|]', '', (query or stem.replace("_AI_HOLD", ""))).strip() or "Unknown_Disc"
             matched = f"{fallback_label} (Unmatched)"
 
         safe = re.sub(r'[\\/:*?"<>|]', '', matched).strip()
@@ -488,7 +487,7 @@ def process_finished():
             if 0 < info["bitrate_kbps"] < int(CFG.get("MIN_VIDEO_BITRATE_KBPS", 400)):
                 is_low, reasons = True, reasons + [f"Bitrate {info['bitrate_kbps']}kbps"]
 
-        base_bucket = "short_videos" if is_short else ("low_quality_quarantine" if is_low else "organized_movies")
+        base_bucket = "short_videos" if is_short else ("quarantine/low_quality" if is_low else ("quarantine/unmatched" if is_unmatched else "organized_movies"))
         dest_dir = os.path.join(MEDIA_DIR, base_bucket, safe)
         os.makedirs(dest_dir, exist_ok=True)
         shutil.move(fpath, os.path.join(dest_dir, f"{safe} - Extra ({info['duration_mins']}m){ext}" if is_short else f"{safe}{ext}"))
