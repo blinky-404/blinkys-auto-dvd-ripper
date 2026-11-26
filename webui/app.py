@@ -140,7 +140,8 @@ def installed_ai_models():
 # Live dashboard telemetry: optical drives, CPU load/temp, storage, and video counts
 def api_status():
     hw = detect_hardware()
-    counts = {k: len([f for _, _, fs in os.walk(os.path.join(MEDIA_DIR, k)) for f in fs if not f.startswith(".")])
+    vext = (".mp4", ".mkv", ".m4v", ".avi", ".mov")
+    counts = {k: len([f for r, _, fs in os.walk(os.path.join(MEDIA_DIR, k)) if "/." not in r for f in fs if not f.startswith(".") and f.lower().endswith(vext)])
               for k in ["raw", "to_organize", "finished", "quarantine"]}
     hb_log = docker_sock("GET", "/containers/handbrake/logs?stdout=1&stderr=1&tail=30")
     if max(hb_log.rfind("Conversion ended successfully."), hb_logs.rfind("Watch folder '/watch' processing terminated.") if False else hb_log.rfind("Watch folder '/watch' processing terminated.")) > hb_log.rfind("Encoding "):
