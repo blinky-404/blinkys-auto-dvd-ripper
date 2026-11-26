@@ -22,7 +22,7 @@ CONF_FILE = os.path.join(SYSTEM_DIR, "config", "organizer.conf")
 LOG_FILE = os.path.join(SYSTEM_DIR, "logs", "organizer.log")
 
 os.makedirs(os.path.join(SYSTEM_DIR, "logs"), exist_ok=True)
-for sub in ["finished", "organized_movies", "short_videos", "quarantine/no_audio", "quarantine/low_quality", "quarantine/unmatched"]:
+for sub in ["finished", "organized_movies", "short_videos", "quarantine/no_audio", "quarantine/low_quality", "quarantine/unmatched", "quarantine/audio_problems"]:
     os.makedirs(os.path.join(MEDIA_DIR, sub), exist_ok=True)
 
 def load_conf():
@@ -386,6 +386,22 @@ def process_finished():
         if not info["a_codecs"] and CFG.get("ENABLE_SILENT_QUARANTINE") == "true":
             shutil.move(fpath, os.path.join(MEDIA_DIR, "quarantine", "no_audio", f"{stem}_NO_AUDIO{ext}"))
             log(f"   -> QUARANTINED to quarantine/no_audio/ (0 audio tracks)")
+            parts = stem.split(" - ", 1)
+            disc_prefix = parts.pop(0).strip() if len(parts) == 2 else ""
+            raw_stem = parts.pop(0).strip() if len(parts) == 2 else stem
+            raw_base = os.path.join(MEDIA_DIR, "raw")
+            for r_root, _, r_files in os.walk(raw_base, topdown=False):
+                if r_root == raw_base:
+                    continue
+                if disc_prefix and os.path.basename(r_root) != disc_prefix:
+                    continue
+                for cand in (f"{stem}.mkv", f"{raw_stem}.mkv"):
+                    if cand in r_files:
+                        dest_ap = os.path.join(MEDIA_DIR, "quarantine", "audio_problems", f"{os.path.splitext(cand)[0]}_AUDIO_PROBLEM.mkv")
+                        shutil.move(os.path.join(r_root, cand), dest_ap)
+                        log(f"   -> Rescued raw MKV to quarantine/audio_problems/{os.path.basename(dest_ap)}")
+                if not os.listdir(r_root):
+                    os.rmdir(r_root)
             continue
 
         min_mins = float(CFG.get("MIN_RUNTIME_MINS", 45))
