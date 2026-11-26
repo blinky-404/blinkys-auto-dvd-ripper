@@ -86,6 +86,17 @@ def detect_hardware():
         gpus += ["qsv", "vaapi"]
     if subprocess.run(["which", "nvidia-smi"], capture_output=True).returncode == 0:
         gpus.append("nvenc")
+    recent_events = []
+    for lf in ("organizer.log", "audio_audit.log"):
+        lp = os.path.join(SYSTEM_DIR, "logs", lf)
+        if os.path.exists(lp):
+            try:
+                with open(lp, "r", errors="ignore") as f:
+                    lines = [x.strip() for x in f.readlines()[-4:]]
+                    recent_events.extend([x for x in lines if x])
+            except Exception:
+                pass
+    recent_events = sorted(recent_events)[-6:]
     return {"drives": drives, "usb_power_warning": usb_warn, "available_gpus": gpus,
         "ram_gb": round(sum(int(l.split().pop(1)) for l in open("/proc/meminfo") if l.startswith("MemTotal:")) / (1024 * 1024), 1),
         "cpu_cores": os.cpu_count() or 1}

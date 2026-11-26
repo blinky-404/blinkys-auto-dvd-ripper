@@ -134,10 +134,29 @@
       </div>
     </section>
     <section id="sec-guide" class="hidden">
-      <div><h3 style="color:#38bdf8;margin-bottom:6px;">Movies vs. TV Box Sets vs. Concert DVDs</h3><p style="font-size:13px;">For <strong>Movies</strong>, leave TMDB and Min Runtime (45m) checked. For <strong>TV Series or Music DVDs</strong>, uncheck Min Runtime in <em>Setup</em> and switch Database to <strong>TVmaze</strong> or <strong>MusicBrainz</strong> (no API key needed).</p></div>
-      <div><h3 style="color:#38bdf8;margin-bottom:6px;">On-Demand Local AI Vision</h3><p style="font-size:13px;">Click <strong>Install Selected Local AI Model</strong> in <em>Setup</em> to download a ~1.7 GB vision model. It stays completely stopped (0 MB RAM) until an unmatched disc needs identification.</p></div>
-      <div><h3 style="color:#38bdf8;margin-bottom:6px;">USB Power & Multi-Drive Tips</h3><p style="font-size:13px;">Keep Multi-Drive Mode on <strong>Sequential Queue</strong> for USB optical drives and plug into rear motherboard USB 3.0 ports or a powered hub.</p></div>
-    </section>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;background:transparent;border:none;padding:0;">
+    <div style="background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:18px;">
+      <div style="font-size:11px;color:#38bdf8;text-transform:uppercase;margin-bottom:4px;">v2.2.0 Safety</div>
+      <h3 style="color:#f8fafc;margin:0 0 8px 0;font-size:15px;">2-of-4 Multi-Factor Confirmation</h3>
+      <p style="font-size:13px;color:#cbd5e1;margin:0;">Movies require at least <strong>2 factors</strong> (TMDB, Runtime &plusmn;4m, Primary AI, Secondary AI) before naming. Unverified rips route to <code>finished/&lt;Title&gt; (Unmatched)/</code> with a 2&times;2 preview grid.</p>
+    </div>
+    <div style="background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:18px;">
+      <div style="font-size:11px;color:#10b981;text-transform:uppercase;margin-bottom:4px;">Storage</div>
+      <h3 style="color:#f8fafc;margin:0 0 8px 0;font-size:15px;">Streamlined 4-Folder Pipeline</h3>
+      <p style="font-size:13px;color:#cbd5e1;margin:0;"><strong>raw/</strong> holds MKVs until audio passes &rarr; <strong>to_organize/</strong> queues HandBrake outputs (<code>_AI_HOLD</code> if CPU &ge; 70%) &rarr; <strong>finished/</strong> holds movies &rarr; <strong>quarantine/</strong> isolates media defects.</p>
+    </div>
+    <div style="background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:18px;">
+      <div style="font-size:11px;color:#a855f7;text-transform:uppercase;margin-bottom:4px;">Zero Idle RAM</div>
+      <h3 style="color:#f8fafc;margin:0 0 8px 0;font-size:15px;">On-Demand Local AI Vision</h3>
+      <p style="font-size:13px;color:#cbd5e1;margin:0;">Select compatible models in <strong>Setup &amp; Toggles</strong> and click <strong>Install Selected Local AI Models</strong>. Ollama runs only during scans (0 MB idle RAM).</p>
+    </div>
+    <div style="background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:18px;">
+      <div style="font-size:11px;color:#f59e0b;text-transform:uppercase;margin-bottom:4px;">Discs &amp; Drives</div>
+      <h3 style="color:#f8fafc;margin:0 0 8px 0;font-size:15px;">TV Box Sets, Concerts &amp; USB Drives</h3>
+      <p style="font-size:13px;color:#cbd5e1;margin:0;">For <strong>TV or Concert DVDs</strong>, uncheck Min Runtime (45m) and switch Database to <strong>TVmaze</strong> or <strong>MusicBrainz</strong>. Use <strong>Sequential Queue</strong> for USB drives.</p>
+    </div>
+  </div>
+</section>
   </main>
   <script>
     const h = window.location.hostname;
@@ -177,10 +196,28 @@
         if (!ok && !o.text.includes('(Exceeds Host RAM/CPU)')) o.text += ' (Exceeds Host RAM/CPU)';
       });
       const aiBadge = document.getElementById('ai-status-badge'); if (aiBadge) aiBadge.innerText = r.ai_models.length ? 'Installed Local AI: ' + r.ai_models.join(', ') : 'Status: No Local AI Installed';
-      document.getElementById('svc-status').innerText = Object.entries(r.containers).map(([k,v]) => `${k}: ${v}`).join(' | ');
-      document.getElementById('queue-counts').innerHTML = Object.entries(r.counts).map(([k,v]) => `<div style="padding:8px;background:#1e293b;border-radius:6px;"><div style="font-size:16px;font-weight:bold;color:#fff;">${v}</div><div style="font-size:10px;color:#94a3b8;">${k}</div></div>`).join('');
-    }
-    async function restartSvc(s) { await fetch('/api/restart/'+s, {method:'POST'}); poll(); }
+      document.getElementById('svc-status').innerHTML = Object.entries(r.containers).map(([k,v]) => {
+    const up = v === 'running';
+    return `<span style="display:inline-flex;align-items:center;gap:5px;padding:4px 9px;margin-left:6px;border-radius:999px;font-size:11px;background:#090d16;border:1px solid ${up ? '#065f46' : '#334155'};color:${up ? '#34d399' : '#94a3b8'};"><span style="width:7px;height:7px;border-radius:50%;background:${up ? '#10b981' : '#64748b'};"></span>${k}</span>`;
+  }).join('');
+  const cMeta = {
+    raw:{label:'RAW RIPS',accent:'#38bdf8'},
+    to_organize:{label:'TO ORGANIZE',accent:'#f59e0b'},
+    finished:{label:'FINISHED MOVIES',accent:'#10b981'},
+    quarantine:{label:'QUARANTINE',accent:'#f43f5e'}
+  };
+  document.getElementById('queue-counts').innerHTML = Object.entries(r.counts).map(([k,v]) => {
+    const m = cMeta[k] || {label:k.toUpperCase(),accent:'#94a3b8'};
+    return `<div onclick="tab('files',document.querySelectorAll('nav button').item(3))" style="cursor:pointer;padding:14px 10px;background:#090d16;border:1px solid #1e293b;border-top:3px solid ${m.accent};border-radius:8px;"><div style="font-size:22px;font-weight:700;color:#f8fafc;">${v}</div><div style="font-size:11px;font-weight:600;color:${m.accent};margin-top:4px;">${m.label}</div></div>`;
+  }).join('');
+  const feedEl = document.getElementById('dash-feed');
+  if (feedEl && Array.isArray(r.recent_events)) {
+    feedEl.innerHTML = r.recent_events.length
+      ? r.recent_events.map(l => `<div style="border-bottom:1px solid #1e293b;padding:3px 0;">${l.replace(/</g,'&lt;')}</div>`).join('')
+      : '<span style="color:#64748b;">No recent events yet.</span>';
+  }
+}
+  async function restartSvc(s) { await fetch('/api/restart/'+s, {method:'POST'}); poll(); }
     async function runOrg() { await fetch('/api/organize', {method:'POST'}); setTimeout(poll, 1500); }
     async function loadLogs() { const l = await (await fetch('/api/logs')).json(); ['mkv','aud','hb','org'].forEach((k,i) => document.getElementById('box-'+k).innerText = l[['makemkv','audio','handbrake','organizer'].at(i)]); }
     function exportReport() { const s = ['mkv','aud','hb','org'].map((k,i) => document.getElementById('lg-'+k).checked ? ['makemkv','audio','handbrake','organizer'].at(i) : '').filter(Boolean).join(','); window.location = `/api/logs/export?sections=${s}&save_server=${document.getElementById('lg-srv').checked}`; }
@@ -214,8 +251,26 @@
       document.getElementById('ai-msg').innerText = r.message;
       if (!aiPollTimer) aiPollTimer = setInterval(pollAIInstall, 1000);
     }
-    async function loadMedia() { const list = await (await fetch('/api/media/list')).json(); document.getElementById('media-list').innerHTML = list.map(m => `<button onclick="playVid('${m.rel}','${m.name}')" style="display:flex;justify-content:space-between;width:100%;margin-bottom:6px;background:#1e293b;color:#f1f5f9;padding:10px;border-radius:6px;"><span><strong>[${m.folder}]</strong> ${m.name}</span><span>${m.mb} MB</span></button>`).join('') || '<div>No media files found yet.</div>'; }
-    function playVid(rel, name) { const v = document.getElementById('vid-player'); v.src = '/api/media/stream?path=' + encodeURIComponent(rel); v.play(); document.getElementById('vid-label').innerText = 'Streaming: ' + name; }
+    let allMediaItems = [];
+  function renderMediaList(items) {
+    const bc = {raw:'#38bdf8',to_organize:'#f59e0b',finished:'#10b981',quarantine:'#f43f5e'};
+    document.getElementById('media-list').innerHTML = items.map(m => {
+      const c = bc[m.folder] || '#94a3b8';
+      return `<button onclick="playVid('${m.rel}','${m.name}')" style="display:flex;justify-content:space-between;align-items:center;width:100%;margin-bottom:6px;background:#090d16;border:1px solid #1e293b;color:#f1f5f9;padding:10px 12px;border-radius:6px;"><span><span style="display:inline-block;padding:2px 8px;margin-right:8px;border-radius:4px;font-size:11px;font-weight:600;background:#1e293b;color:${c};">${m.folder}</span>${m.name}</span><span style="color:#94a3b8;font-size:12px;">${m.mb} MB</span></button>`;
+    }).join('') || '<div style="color:#64748b;padding:8px;">No matching media files found.</div>';
+  }
+  function filterMediaList() {
+    const q = (document.getElementById('media-filter')?.value || '')
+      .toLowerCase();
+    renderMediaList(q ? allMediaItems.filter(m =>
+      m.name.toLowerCase().includes(q) ||
+      m.folder.toLowerCase().includes(q)) : allMediaItems);
+  }
+  async function loadMedia() {
+    allMediaItems = await (await fetch('/api/media/list')).json();
+    filterMediaList();
+  }
+  function playVid(rel, name) { const v = document.getElementById('vid-player'); v.src = '/api/media/stream?path=' + encodeURIComponent(rel); v.play(); document.getElementById('vid-label').innerText = 'Streaming: ' + name; }
     setInterval(poll, 4000); poll(); pollAIInstall();
   
 async function pollActionStatus() {
