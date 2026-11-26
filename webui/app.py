@@ -130,7 +130,7 @@ def installed_ai_models():
 def api_status():
     hw = detect_hardware()
     counts = {k: len([f for _, _, fs in os.walk(os.path.join(MEDIA_DIR, k)) for f in fs if not f.startswith(".")])
-              for k in ["raw", "finished", "organized_movies", "short_videos", "quarantine"]}
+              for k in ["raw", "to_organize", "finished", "short_videos", "quarantine"]}
     hb_log = docker_sock("GET", "/containers/handbrake/logs?stdout=1&stderr=1&tail=30")
     if max(hb_log.rfind("Conversion ended successfully."), hb_logs.rfind("Watch folder '/watch' processing terminated.") if False else hb_log.rfind("Watch folder '/watch' processing terminated.")) > hb_log.rfind("Encoding "):
         hb_log = ""
@@ -338,7 +338,7 @@ def export_logs(sections: str = "makemkv,audio,handbrake,organizer", save_server
 @app.get("/api/media/list")
 def list_media():
     items = []
-    for folder in ["raw", "finished", "organized_movies", "short_videos", "quarantine"]:
+    for folder in ["raw", "to_organize", "finished", "short_videos", "quarantine"]:
         base = os.path.join(MEDIA_DIR, folder)
         for r, _, fns in os.walk(base):
             for fn in sorted(fns):
@@ -357,7 +357,7 @@ def stream_media(path: str = Query(...)):
     proc = subprocess.Popen(["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", full, "-c:v", "libx264", "-preset", "ultrafast", "-crf", "26", "-c:a", "aac", "-b:a", "128k", "-movflags", "frag_keyframe+empty_moov", "-f", "mp4", "pipe:1"], stdout=subprocess.PIPE)
     return StreamingResponse(iter(lambda: proc.stdout.read(65536), b""), media_type="video/mp4")
     items = []
-    for folder in ["raw", "finished", "organized_movies", "short_videos", "quarantine"]:
+    for folder in ["raw", "to_organize", "finished", "short_videos", "quarantine"]:
         base = os.path.join(MEDIA_DIR, folder)
         for r, _, fns in os.walk(base):
             for fn in sorted(fns):
@@ -457,7 +457,7 @@ def update_stack():
 
 import time
 def _finished_watcher_loop():
-    trig = os.path.join(MEDIA_DIR, "finished", ".trigger_organizer")
+    trig = os.path.join(MEDIA_DIR, "to_organize", ".trigger_organizer")
     while True:
         try:
             time.sleep(2)

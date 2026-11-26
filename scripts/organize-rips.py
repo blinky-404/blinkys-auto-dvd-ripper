@@ -22,7 +22,7 @@ CONF_FILE = os.path.join(SYSTEM_DIR, "config", "organizer.conf")
 LOG_FILE = os.path.join(SYSTEM_DIR, "logs", "organizer.log")
 
 os.makedirs(os.path.join(SYSTEM_DIR, "logs"), exist_ok=True)
-for sub in ["finished", "organized_movies", "short_videos", "quarantine/no_audio", "quarantine/low_quality", "quarantine/unmatched", "quarantine/audio_problems"]:
+for sub in ["to_organize", "finished", "short_videos", "quarantine/no_audio", "quarantine/low_quality", "quarantine/unmatched", "quarantine/audio_problems"]:
     os.makedirs(os.path.join(MEDIA_DIR, sub), exist_ok=True)
 
 def load_conf():
@@ -236,7 +236,7 @@ def query_database(query, duration_mins=0):
     return None
 
 # Fallback: capture a 2x2 frame grid and query Local Ollama (moondream) or Cloud AI
-GENERIC_DISC_NAMES = {"dvd", "dvd_video", "video_ts", "bdmv", "disc", "disc1", "disc2", "disk", "untitled", "unknown", "unidentified", "volume", "movie", "video", "main", "finished", "ai_hold"}
+GENERIC_DISC_NAMES = {"dvd", "dvd_video", "video_ts", "bdmv", "disc", "disc1", "disc2", "disk", "untitled", "unknown", "unidentified", "volume", "movie", "video", "main", "to_organize", "ai_hold"}
 
 def is_generic_name(name):
     cleaned = re.sub(r"[\s_\-]+", "_", (name or "").strip().lower()).strip("_")
@@ -354,10 +354,10 @@ def identify_with_ai(video_path, duration_secs, out_dir, model_name=None):
     return None
 
 def process_finished():
-    fin_dir = os.path.join(MEDIA_DIR, "finished")
+    fin_dir = os.path.join(MEDIA_DIR, "to_organize")
     files = [os.path.join(r, fn) for r, _, fns in os.walk(fin_dir) if "/." not in r for fn in fns if fn.lower().endswith((".mp4", ".mkv", ".m4v")) and not fn.startswith(".")]
     if not files:
-        log("Organizer check complete: No new files in finished/.")
+        log("Organizer check complete: No new files in to_organize/.")
         return
 
     for fpath in sorted(files):
@@ -453,7 +453,7 @@ def process_finished():
                 if "_AI_HOLD" not in stem:
                     hold_path = os.path.join(os.path.dirname(fpath), f"{stem}_AI_HOLD{ext}")
                     shutil.move(fpath, hold_path)
-                    log(f"   -> CPU load at {cpu_now}% (>= 70%); tagged {stem}_AI_HOLD{ext} in finished/ until CPU drops below 70%.")
+                    log(f"   -> CPU load at {cpu_now}% (>= 70%); tagged {stem}_AI_HOLD{ext} in to_organize/ until CPU drops below 70%.")
                 continue
 
             ai1_model = CFG.get("LOCAL_AI_MODEL", "gemma3:4b").strip()
@@ -503,7 +503,7 @@ def process_finished():
             if 0 < info["bitrate_kbps"] < int(CFG.get("MIN_VIDEO_BITRATE_KBPS", 400)):
                 is_low, reasons = True, reasons + [f"Bitrate {info['bitrate_kbps']}kbps"]
 
-        base_bucket = "short_videos" if is_short else ("quarantine/low_quality" if is_low else ("quarantine/unmatched" if is_unmatched else "organized_movies"))
+        base_bucket = "short_videos" if is_short else ("quarantine/low_quality" if is_low else ("quarantine/unmatched" if is_unmatched else "finished"))
         dest_dir = os.path.join(MEDIA_DIR, base_bucket, safe)
         os.makedirs(dest_dir, exist_ok=True)
         shutil.move(fpath, os.path.join(dest_dir, f"{safe} - Extra ({info['duration_mins']}m){ext}" if is_short else f"{safe}{ext}"))

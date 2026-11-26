@@ -95,4 +95,4 @@ services:
     volumes:
       - ${SYSTEM_DIR:-${DATA_DIR:-/DATA}/ripper_system}/handbrake:/config
       - ${MEDIA_DIR:-${DATA_DIR:-/DATA}/ripper_media}/raw:/watch
-      - ${MEDIA_DIR:-${DATA_DIR:-/DATA}/ripper_media}/finished:/output
+      - ${MEDIA_DIR:-${DATA_DIR:-/DATA}/ripper_media}/to_organize:/output
