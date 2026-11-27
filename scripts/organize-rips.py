@@ -286,7 +286,31 @@ def identify_with_ai(video_path, duration_secs, out_dir, model_name=None):
         [0.88, 0.91, 0.93, 0.95, 0.97, 0.99],
         [0.015, 0.04, 0.15, 0.30, 0.70, 0.94],
     ]
-    prompt = "Identify the exact movie, TV show, or concert title shown in these video frames (check any title cards, credits, actors, or logos). Reply ONLY with the clean title (and year if known). If completely unrecognizable, reply UNKNOWN."
+    raw_stem = os.path.splitext(os.path.basename(video_path))[0]
+    hint = re.sub(
+        r"(_AI_HOLD|_SHORT_\d+m|\s*\(Unmatched\)|"
+        r"[-_\s]*(?:[A-Z]\d+_)?[tT]\d+$)",
+        "", clean_disc_name(raw_stem), flags=re.I
+    ).strip()
+    junk = {
+        "dvd video", "disc 1", "disc 2", "video ts", "movie",
+        "video", "disc", "dvd", "main", "unknown", "unidentified",
+        "untitled", "title00", "title01"
+    }
+    if len(hint) <= 2 or hint.lower() in junk:
+        hint = ""
+    prompt = (
+        "Identify the exact movie, TV show, or concert title shown "
+        "in these video frames (check any title cards, credits, "
+        "actors, or logos). Reply ONLY with the clean title (and "
+        "year if known). If completely unrecognizable, reply UNKNOWN."
+    )
+    if hint:
+        prompt += (
+            f" Filename/disc label clue (may be abbreviated or "
+            f"unrelated—verify against what you actually see in the "
+            f"frames): '{hint}'."
+        )
     obin = "/DATA/ripper_system/ollama/bin/ollama"
     model = model_name or CFG.get("LOCAL_AI_MODEL", "gemma3:4b")
     env = dict(os.environ, OLLAMA_MODELS="/DATA/ripper_system/ollama/models", OLLAMA_HOST="127.0.0.1:11434")
